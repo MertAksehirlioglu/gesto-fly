@@ -1,0 +1,50 @@
+{
+  "name": "gesto-fly",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --fix",
+    "format": "prettier --write .",
+    "knip": "knip",
+    "qa": "npm run type-check && npm run knip && npm run lint && npm run format",
+    "test:unit": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "mcp:playwright": "npx @playwright/mcp",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "@mediapipe/tasks-vision": "^0.10.22-rc.20250304",
+    "matter-js": "^0.20.0",
+    "sass": "^1.97.1",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vue": "^3.5.24",
+    "vuetify": "^3.11.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@playwright/mcp": "^0.0.53",
+    "@playwright/test": "^1.57.0",
+    "@types/matter-js": "^0.20.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/ui": "^4.0.16",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/test-utils": "^2.4.6",
+    "eslint": "^9.39.2",
+    "eslint-plugin-vue": "^10.6.2",
+    "globals": "^16.5.0",
+    "jsdom": "^27.3.0",
+    "knip": "^5.77.1",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.1",
+    "vite": "^7.2.4",
+    "vitest": "^4.0.16",
+    "vue-tsc": "^3.2.1"
+  }
+}

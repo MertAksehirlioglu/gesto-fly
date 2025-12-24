@@ -1,0 +1,14 @@
+{
+  "entry": ["src/main.js"],
+  "project": ["src/**/*.{js,vue}"],
+  "ignore": [
+    "**/*.d.ts",
+    "src/components/CameraInput.vue",
+    "src/components/TeamSelector.vue"
+  ],
+  "ignoreDependencies": [
+    "matter-js",
+    "@types/matter-js",
+    "@mediapipe/tasks-vision"
+  ]
+}
