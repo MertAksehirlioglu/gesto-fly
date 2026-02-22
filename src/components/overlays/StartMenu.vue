@@ -115,6 +115,7 @@
           ref="btnCompetitive"
           class="menu-btn primary"
           :class="{ hovering: hoverState.target === 'COMPETITIVE' }"
+          @click="emit('start-competitive')"
         >
           <span class="btn-title">COMPETITIVE</span>
           <span class="btn-sub">30s Timer • Ranked</span>
@@ -130,6 +131,7 @@
           ref="btnPractice"
           class="menu-btn secondary"
           :class="{ hovering: hoverState.target === 'PRACTICE' }"
+          @click="emit('start-practice')"
         >
           <span class="btn-title">PRACTICE</span>
           <span class="btn-sub">No Timer • Free Throw</span>
@@ -145,6 +147,7 @@
           ref="btnLeaderboard"
           class="menu-btn tertiary"
           :class="{ hovering: hoverState.target === 'LEADERBOARD' }"
+          @click="emit('show-leaderboard')"
         >
           LEADERBOARD 🏆
           <div
@@ -159,6 +162,7 @@
           ref="btnRecalibrate"
           class="menu-btn tertiary recalibrate"
           :class="{ hovering: hoverState.target === 'RECALIBRATE' }"
+          @click="emit('recalibrate')"
         >
           RECALIBRATE 🎯
           <div
@@ -226,8 +230,7 @@
     padding: 15px 30px;
     border-radius: 12px;
     border: none;
-    cursor: default;
-    pointer-events: none;
+    cursor: pointer;
     text-transform: uppercase;
     font-weight: bold;
     color: white;
