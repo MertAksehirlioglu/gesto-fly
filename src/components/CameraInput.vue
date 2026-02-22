@@ -2,6 +2,28 @@
   import { onMounted, onBeforeUnmount, ref } from 'vue'
   import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision'
 
+  // ---------------------------------------------------------------------------
+  // Exponential Moving Average smoother
+  // alpha: 0 = no update (frozen), 1 = no smoothing (raw).
+  // 0.25–0.35 gives good cursor smoothness with minimal lag.
+  // ---------------------------------------------------------------------------
+  class EMA {
+    private alpha: number
+    private value: number | null = null
+    constructor(alpha = 0.3) { this.alpha = alpha }
+    update(raw: number): number {
+      this.value = this.value === null ? raw : this.alpha * raw + (1 - this.alpha) * this.value
+      return this.value
+    }
+    reset() { this.value = null }
+  }
+
+  const cursorX  = new EMA(0.3)
+  const cursorY  = new EMA(0.3)
+  const pinchX   = new EMA(0.35)
+  const pinchY   = new EMA(0.35)
+  const pinchDist = new EMA(0.4)
+
   const videoRef = ref<HTMLVideoElement | null>(null)
   const canvasRef = ref<HTMLCanvasElement | null>(null)
   const isCameraActive = ref(false)
@@ -84,26 +106,28 @@
       const indexTip = landmarks[8]
       const thumbTip = landmarks[4]
 
-      const distance = Math.hypot(
+      const rawDistance = Math.hypot(
         indexTip.x - thumbTip.x,
         indexTip.y - thumbTip.y,
       )
+      const distance = pinchDist.update(rawDistance)
+
       // Dynamic pinch threshold — from calibration or fallback default
       const pinchThreshold = props.pinchThreshold ?? 0.03
 
-      // Emit raw distance every frame for calibration overlay
+      // Emit smoothed distance every frame for calibration overlay
       emit('pinchDistance', distance)
 
       const centerX = (indexTip.x + thumbTip.x) / 2
       const centerY = (indexTip.y + thumbTip.y) / 2
 
-      // Map to visual coordinates (Mirrored)
-      const visualX = 1 - centerX
-      const visualY = centerY
+      // Map to visual coordinates (Mirrored) — smoothed
+      const visualX = pinchX.update(1 - centerX)
+      const visualY = pinchY.update(centerY)
 
-      // Cursor Logic (Index Finger Tip)
-      const cursorVisualX = 1 - indexTip.x
-      const cursorVisualY = indexTip.y
+      // Cursor Logic (Index Finger Tip) — smoothed
+      const cursorVisualX = cursorX.update(1 - indexTip.x)
+      const cursorVisualY = cursorY.update(indexTip.y)
 
       // Always emit cursor position for UI interaction (Hover)
       emit('gesture', {
@@ -138,7 +162,11 @@
         }
       }
     } else {
-      // Hand lost
+      // Hand lost — reset smoothers so stale values don't bleed into next detection
+      cursorX.reset(); cursorY.reset()
+      pinchX.reset();  pinchY.reset()
+      pinchDist.reset()
+
       if (isPinching) {
         isPinching = false
         releaseFrameCount = 0
