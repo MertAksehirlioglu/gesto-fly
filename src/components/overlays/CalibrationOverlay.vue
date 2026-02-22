@@ -10,8 +10,8 @@
     (e: 'skip'): void
   }>()
 
-  type Step = 'open' | 'pinch' | 'done'
-  const step = ref<Step>('open')
+  type Step = 'waiting' | 'open' | 'pinch' | 'done'
+  const step = ref<Step>('waiting')
   const countdown = ref(2)
   const recordedMax = ref(0)
   const recordedMin = ref(0.12)
@@ -21,12 +21,15 @@
   let sampledMin = 0.12
 
   const stepTitle = computed(() => {
+    if (step.value === 'waiting') return 'Position Your Hand'
     if (step.value === 'open') return 'Step 1: Open Your Hand'
     if (step.value === 'pinch') return 'Step 2: Pinch Your Fingers'
     return '✅ Calibration Complete!'
   })
 
   const stepInstruction = computed(() => {
+    if (step.value === 'waiting')
+      return 'Hold your open hand in front of the camera to begin calibration.'
     if (step.value === 'open')
       return 'Hold your hand open in front of the camera with your palm facing it.'
     if (step.value === 'pinch')
@@ -62,11 +65,13 @@
     }, 1000)
   }
 
-  // Sample pinch distance during active steps
+  // Sample pinch distance during active steps; kick off calibration once hand is visible
   watch(
     () => props.currentPinchDistance,
     (d) => {
-      if (step.value === 'open') {
+      if (step.value === 'waiting') {
+        if (d > 0.01) startStep('open')
+      } else if (step.value === 'open') {
         if (d > sampledMax) sampledMax = d
       } else if (step.value === 'pinch') {
         if (d < sampledMin) sampledMin = d
@@ -82,8 +87,7 @@
     emit('skip')
   }
 
-  // Start on mount
-  startStep('open')
+  // Calibration begins once hand is detected (see watch above)
 
   onUnmounted(() => {
     if (intervalId) clearInterval(intervalId)
@@ -105,8 +109,8 @@
 
     <v-card class="calibration-card" rounded="xl" color="rgba(10,10,20,0.92)">
       <v-card-text class="text-center pa-8">
-        <!-- Step indicator -->
-        <div class="step-indicator mb-4">
+        <!-- Step indicator (only shown once calibration is underway) -->
+        <div v-if="step !== 'waiting'" class="step-indicator mb-4">
           <v-chip
             v-for="(s, i) in ['open', 'pinch', 'done']"
             :key="s"
@@ -126,8 +130,20 @@
           {{ stepInstruction }}
         </p>
 
-        <!-- Live pinch bar (shown during calibration steps) -->
-        <template v-if="step !== 'done'">
+        <!-- Waiting for hand -->
+        <template v-if="step === 'waiting'">
+          <v-progress-circular
+            indeterminate
+            color="orange"
+            size="64"
+            width="5"
+            class="mb-4"
+          />
+          <p class="text-caption text-grey">Waiting for hand…</p>
+        </template>
+
+        <!-- Live pinch bar (shown during open/pinch steps) -->
+        <template v-else-if="step !== 'done'">
           <div class="mb-2">
             <span class="text-caption text-grey">Live pinch distance</span>
           </div>

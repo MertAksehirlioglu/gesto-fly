@@ -15,7 +15,7 @@
   }>()
 
   // --- Calibration ---
-  const { isCalibrated, pinchThreshold, throwMultiplier, finalize } = useCalibration()
+  const { isCalibrated, pinchThreshold, throwMultiplier, finalize, reset } = useCalibration()
   const latestPinchDistance = ref(0)
 
   const handlePinchDistance = (d: number) => {
@@ -32,6 +32,11 @@
 
   const onCalibrationSkip = () => {
     gameState.value = 'MENU'
+  }
+
+  const onRecalibrate = () => {
+    reset()
+    gameState.value = 'CALIBRATING'
   }
 
   // --- State ---
@@ -273,6 +278,7 @@
       @start-competitive="startGame('COMPETITIVE')"
       @start-practice="startGame('PRACTICE')"
       @show-leaderboard="showLeaderboard"
+      @recalibrate="onRecalibrate"
     />
 
     <LeaderboardOverlay
