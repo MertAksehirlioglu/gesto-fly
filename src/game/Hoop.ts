@@ -104,7 +104,7 @@ export class Hoop {
           {
             collisionFilter: { group: netGroup },
             frictionAir: 0.1,
-            render: { visible: false }, // Hidden — drawn on canvas instead
+            render: { fillStyle: 'rgba(255,255,255,0.85)' },
           },
         )
         strandBodies.push(body)
@@ -143,7 +143,12 @@ export class Hoop {
           bodyA: currentStrand[j],
           bodyB: nextStrand[j],
           stiffness: 0.5,
-          render: { visible: false },
+          render: {
+            visible: true,
+            type: 'line',
+            strokeStyle: 'rgba(255,255,255,0.7)',
+            lineWidth: 2,
+          },
         })
 
         Matter.Composite.add(this.composite, link)

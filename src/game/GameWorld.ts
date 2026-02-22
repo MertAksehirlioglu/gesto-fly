@@ -227,16 +227,16 @@ export class GameWorld {
       const ctx = this.render.context
       const floorY = this.height - 150
 
-      // --- 1. Arena background gradient ---
+      // --- 1. Arena overlay — semi-transparent so camera feed shows through ---
       const bgGrad = ctx.createLinearGradient(0, 0, 0, floorY)
-      bgGrad.addColorStop(0, '#1a1a2e')
-      bgGrad.addColorStop(0.5, '#16213e')
-      bgGrad.addColorStop(1, '#0f3460')
+      bgGrad.addColorStop(0, 'rgba(26,26,46,0.55)')
+      bgGrad.addColorStop(0.5, 'rgba(22,33,62,0.55)')
+      bgGrad.addColorStop(1, 'rgba(15,52,96,0.6)')
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, this.width, floorY)
 
       // --- 2. Hardwood floor ---
-      ctx.fillStyle = '#7a4f2e'
+      ctx.fillStyle = 'rgba(122,79,46,0.88)'
       ctx.fillRect(0, floorY, this.width, this.height - floorY)
 
       // Wood grain lines
@@ -286,49 +286,9 @@ export class GameWorld {
         ctx.restore()
       }
 
-      // --- 4. Net (canvas-drawn) ---
-      if (this.activeHoop) {
-        const netData = this.activeHoop.getNetInfo()
-        const netBottom = netData.topY + 75
-        const strands = 4
-        const stepX = (netData.endX - netData.startX) / (strands - 1)
-        const segments = 5
-        const segH = (netBottom - netData.topY) / segments
+      // Net is rendered by Matter.js physics bodies (visible, moves with physics)
 
-        ctx.save()
-        ctx.strokeStyle = netData.color
-        ctx.lineWidth = 1.5
-        ctx.globalAlpha = 0.85
-
-        // Vertical strands tapering inward toward bottom
-        for (let si = 0; si < strands; si++) {
-          const t_i = si / (strands - 1)
-          ctx.beginPath()
-          for (let sj = 0; sj <= segments; sj++) {
-            const t = sj / segments
-            const inset = t * (netData.endX - netData.startX) * 0.1
-            const nx = netData.startX + si * stepX + (t_i < 0.5 ? inset : -inset)
-            const ny = netData.topY + sj * segH
-            if (sj === 0) ctx.moveTo(nx, ny)
-            else ctx.lineTo(nx, ny)
-          }
-          ctx.stroke()
-        }
-
-        // Horizontal cross-links
-        for (let hj = 0; hj <= segments; hj++) {
-          const t = hj / segments
-          const inset = t * (netData.endX - netData.startX) * 0.1
-          ctx.beginPath()
-          ctx.moveTo(netData.startX + inset, netData.topY + hj * segH)
-          ctx.lineTo(netData.endX - inset, netData.topY + hj * segH)
-          ctx.stroke()
-        }
-
-        ctx.restore()
-      }
-
-      // --- 5. Ball shadow + ball ---
+      // --- 4. Ball shadow + ball ---
       if (this.activeBall) {
         const ballBody = this.activeBall.getBody()
         const ballPos = ballBody.position
