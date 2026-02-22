@@ -114,9 +114,13 @@
 
       // Dynamic pinch threshold — from calibration or fallback default
       const pinchThreshold = props.pinchThreshold ?? 0.03
+      // Hysteresis: require 30% more gap to release than to grab.
+      // Prevents the ball re-grabbing itself mid-throw on noisy frames.
+      const releaseThreshold = pinchThreshold * 1.3
 
-      // Emit smoothed distance every frame for calibration overlay
-      emit('pinchDistance', distance)
+      // Emit raw distance for calibration sampling (accurate max/min),
+      // smoothed distance is only used internally for the pinch state machine.
+      emit('pinchDistance', rawDistance)
 
       const centerX = (indexTip.x + thumbTip.x) / 2
       const centerY = (indexTip.y + thumbTip.y) / 2
@@ -125,9 +129,13 @@
       const visualX = pinchX.update(1 - centerX)
       const visualY = pinchY.update(centerY)
 
-      // Cursor Logic (Index Finger Tip) — smoothed
-      const cursorVisualX = cursorX.update(1 - indexTip.x)
-      const cursorVisualY = cursorY.update(indexTip.y)
+      // Cursor: follow pinch center while grabbing (stable, avoids landmark
+      // confusion between thumb/index tip in awkward orientations), otherwise
+      // follow index tip for hover/UI interactions.
+      const rawCursorX = isPinching ? (1 - centerX) : (1 - indexTip.x)
+      const rawCursorY = isPinching ? centerY         : indexTip.y
+      const cursorVisualX = cursorX.update(rawCursorX)
+      const cursorVisualY = cursorY.update(rawCursorY)
 
       // Always emit cursor position for UI interaction (Hover)
       emit('gesture', {
@@ -136,8 +144,11 @@
         y: cursorVisualY,
       })
 
-      if (distance < pinchThreshold) {
-        // Pinching - Cancel any pending release
+      // ── Pinch state machine — runs on RAW distance (not smoothed) ──────────
+      // Using rawDistance here so release is detected the moment fingers open,
+      // without waiting for the EMA to catch up.
+      if (rawDistance < pinchThreshold) {
+        // Pinching — cancel any pending release
         releaseFrameCount = 0
 
         if (!isPinching) {
@@ -147,16 +158,22 @@
           emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
         }
       } else {
-        // Releasing - Wait for buffer to clear jitter
+        // Past the grab threshold — check hysteresis band before releasing
         if (isPinching) {
-          releaseFrameCount++
-          if (releaseFrameCount >= 5) {
-            // 5 frames ~80ms at 60fps
-            isPinching = false
-            releaseFrameCount = 0
-            emit('gesture', { type: 'pinchEnd', x: visualX, y: visualY })
+          if (rawDistance > releaseThreshold) {
+            // Clearly open — count release frames
+            releaseFrameCount++
+            if (releaseFrameCount >= 3) {
+              isPinching = false
+              releaseFrameCount = 0
+              emit('gesture', { type: 'pinchEnd', x: visualX, y: visualY })
+            } else {
+              // Short buffer to absorb single noisy frames
+              emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
+            }
           } else {
-            // Still nominally pinching during buffer, keep updating position
+            // In the hysteresis dead band — stay pinched, reset counter
+            releaseFrameCount = 0
             emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
           }
         }
