@@ -46,6 +46,10 @@
     }
   }
 
+  const props = defineProps<{
+    pinchThreshold?: number
+  }>()
+
   // Define specific emit events with types if possible, but for Vue setup we use defineEmits
   const emit = defineEmits<{
     (
@@ -56,6 +60,7 @@
         y: number
       },
     ): void
+    (e: 'pinchDistance', distance: number): void
   }>()
 
   let isPinching = false
@@ -83,8 +88,11 @@
         indexTip.x - thumbTip.x,
         indexTip.y - thumbTip.y,
       )
-      // Lower threshold for "tighter" grab requirement but "easier" drop (release sooner)
-      const pinchThreshold = 0.03
+      // Dynamic pinch threshold — from calibration or fallback default
+      const pinchThreshold = props.pinchThreshold ?? 0.03
+
+      // Emit raw distance every frame for calibration overlay
+      emit('pinchDistance', distance)
 
       const centerX = (indexTip.x + thumbTip.x) / 2
       const centerY = (indexTip.y + thumbTip.y) / 2

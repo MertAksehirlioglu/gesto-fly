@@ -5,9 +5,17 @@
   import TeamSelector from './components/TeamSelector.vue'
   import MobileWarning from './components/overlays/MobileWarning.vue'
   import { useScreenCoordinates } from './composables/useScreenCoordinates'
+  import { useCalibration } from './composables/useCalibration'
 
   const gameCanvasRef = ref<InstanceType<typeof GameCanvas> | null>(null)
   const currentTeam = ref('fenerbahce')
+
+  // Calibration (singleton — shared with GameCanvas)
+  const { pinchThreshold } = useCalibration()
+
+  const onPinchDistance = (distance: number) => {
+    gameCanvasRef.value?.handlePinchDistance(distance)
+  }
 
   // Use Composable for consistent coord math
   const { transform } = useScreenCoordinates(4 / 3) // 4:3 is standard webcam ratio
@@ -121,7 +129,11 @@
       <MobileWarning />
       <!-- Camera Input (Background Layer) -->
       <div class="camera-layer">
-        <CameraInput @gesture="onGesture" />
+        <CameraInput
+          :pinch-threshold="pinchThreshold"
+          @gesture="onGesture"
+          @pinch-distance="onPinchDistance"
+        />
       </div>
 
       <!-- Stadium Overlay (Target Layer) -->

@@ -6,21 +6,43 @@
   import GameHud from './overlays/GameHud.vue'
   import GameOverOverlay from './overlays/GameOverOverlay.vue'
   import LeaderboardOverlay from './overlays/LeaderboardOverlay.vue'
+  import CalibrationOverlay from './overlays/CalibrationOverlay.vue'
+  import { useCalibration } from '../composables/useCalibration'
 
 
   const props = defineProps<{
     currentTeamName: string
   }>()
 
+  // --- Calibration ---
+  const { isCalibrated, pinchThreshold, throwMultiplier, finalize } = useCalibration()
+  const latestPinchDistance = ref(0)
+
+  const handlePinchDistance = (d: number) => {
+    latestPinchDistance.value = d
+  }
+
+  const onCalibrationComplete = (payload: { min: number; max: number }) => {
+    finalize(payload.min, payload.max)
+    if (gameWorld) {
+      gameWorld.throwMultiplier = throwMultiplier.value
+    }
+    gameState.value = 'MENU'
+  }
+
+  const onCalibrationSkip = () => {
+    gameState.value = 'MENU'
+  }
+
   // --- State ---
   const canvasRef = ref<HTMLCanvasElement | null>(null)
   let gameWorld: GameWorld | null = null
 
   // Game States
-  type GameState = 'MENU' | 'PLAYING' | 'GAME_OVER' | 'LEADERBOARD'
+  type GameState = 'CALIBRATING' | 'MENU' | 'PLAYING' | 'GAME_OVER' | 'LEADERBOARD'
   type GameMode = 'COMPETITIVE' | 'PRACTICE'
 
-  const gameState = ref<GameState>('MENU')
+  const gameState = ref<GameState>(isCalibrated.value ? 'MENU' : 'CALIBRATING')
   const gameMode = ref<GameMode>('COMPETITIVE')
 
   // Game Data
@@ -183,6 +205,7 @@
         canvasRef.value.height = window.innerHeight
 
         gameWorld = new GameWorld(canvasRef.value)
+        gameWorld.throwMultiplier = throwMultiplier.value
         gameWorld.onScore = onScore
         gameWorld.start()
         gameWorld.spawnBall()
@@ -213,9 +236,9 @@
 
   defineExpose({
     handleGesture,
+    handlePinchDistance,
+    pinchThreshold,
     getGameWorld: () => gameWorld,
-    // Expose high score for App.vue to use in TeamSelector?
-    // Or just let App.vue access this component.
     highScore,
   })
 </script>
@@ -233,6 +256,14 @@
         backgroundColor: 'rgba(255, 255, 255, 0.5)',
       }"
     ></div>
+
+    <!-- Calibration -->
+    <CalibrationOverlay
+      v-if="gameState === 'CALIBRATING'"
+      :current-pinch-distance="latestPinchDistance"
+      @complete="onCalibrationComplete"
+      @skip="onCalibrationSkip"
+    />
 
     <!-- Components -->
     <StartMenu
