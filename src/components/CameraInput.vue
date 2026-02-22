@@ -114,9 +114,9 @@
 
       // Dynamic pinch threshold — from calibration or fallback default
       const pinchThreshold = props.pinchThreshold ?? 0.03
-      // Hysteresis: require 30% more gap to release than to grab.
-      // Prevents the ball re-grabbing itself mid-throw on noisy frames.
-      const releaseThreshold = pinchThreshold * 1.3
+      // Hysteresis: require 10% more gap to release than to grab.
+      // Just enough to prevent a single noisy frame from re-grabbing mid-throw.
+      const releaseThreshold = pinchThreshold * 1.1
 
       // Emit raw distance for calibration sampling (accurate max/min),
       // smoothed distance is only used internally for the pinch state machine.
@@ -161,14 +161,13 @@
         // Past the grab threshold — check hysteresis band before releasing
         if (isPinching) {
           if (rawDistance > releaseThreshold) {
-            // Clearly open — count release frames
+            // Clearly open — release immediately (1 frame confirmation)
             releaseFrameCount++
-            if (releaseFrameCount >= 3) {
+            if (releaseFrameCount >= 1) {
               isPinching = false
               releaseFrameCount = 0
               emit('gesture', { type: 'pinchEnd', x: visualX, y: visualY })
             } else {
-              // Short buffer to absorb single noisy frames
               emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
             }
           } else {
