@@ -12,6 +12,8 @@ export class GameWorld {
   public activeBall: Basketball | null = null
   public activeHoop: Hoop | null = null
   public throwMultiplier: number = 0.3
+  private hoopX: number = 0
+  private hoopY: number = 0
 
   constructor(element: HTMLElement) {
     this.element = element
@@ -19,6 +21,7 @@ export class GameWorld {
     this.height = window.innerHeight
 
     this.engine = Matter.Engine.create()
+    this.engine.gravity.y = 1.5
 
     this.render = Matter.Render.create({
       // element: this.element, // Don't use element if we want to use specific canvas
@@ -68,9 +71,9 @@ export class GameWorld {
   }
 
   spawnHoop() {
-    // Spawn hoop on the right side
-    // Shifted left a bit as requested (was width - 200, now width - 300)
-    const hoop = new Hoop(this.width - 300, this.height - 400)
+    this.hoopX = this.width - 300
+    this.hoopY = this.height - 400
+    const hoop = new Hoop(this.hoopX, this.hoopY)
     this.activeHoop = hoop
     Matter.Composite.add(this.engine.world, hoop.getComposite())
   }
@@ -222,10 +225,126 @@ export class GameWorld {
     // Custom Rendering Loop
     Matter.Events.on(this.render, 'afterRender', () => {
       const ctx = this.render.context
+      const floorY = this.height - 150
+
+      // --- 1. Arena background gradient ---
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, floorY)
+      bgGrad.addColorStop(0, '#1a1a2e')
+      bgGrad.addColorStop(0.5, '#16213e')
+      bgGrad.addColorStop(1, '#0f3460')
+      ctx.fillStyle = bgGrad
+      ctx.fillRect(0, 0, this.width, floorY)
+
+      // --- 2. Hardwood floor ---
+      ctx.fillStyle = '#7a4f2e'
+      ctx.fillRect(0, floorY, this.width, this.height - floorY)
+
+      // Wood grain lines
+      for (let gi = 0; gi < 20; gi++) {
+        const lineY = floorY + 8 + gi * 8
+        if (lineY > this.height) break
+        ctx.beginPath()
+        ctx.moveTo(0, lineY)
+        ctx.lineTo(this.width, lineY)
+        ctx.strokeStyle = gi % 2 === 0 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.06)'
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+
+      // Court boundary line at floor edge
+      ctx.beginPath()
+      ctx.moveTo(0, floorY)
+      ctx.lineTo(this.width, floorY)
+      ctx.strokeStyle = '#F5D16E'
+      ctx.lineWidth = 3
+      ctx.stroke()
+
+      // Free-throw semicircle (arcing upward from floor)
+      ctx.beginPath()
+      ctx.arc(this.width * 0.28, floorY, 80, Math.PI, 0)
+      ctx.strokeStyle = '#F5D16E'
+      ctx.lineWidth = 2
+      ctx.stroke()
+
+      // --- 3. Backboard glass + target box ---
+      if (this.hoopX > 0) {
+        const bbX = this.hoopX
+        const bbY = this.hoopY - 50
+        const rimYv = this.hoopY + 20
+
+        ctx.save()
+        // Glass backboard
+        ctx.fillStyle = 'rgba(200,230,255,0.15)'
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'
+        ctx.lineWidth = 2
+        ctx.fillRect(bbX - 6, bbY - 70, 12, 140)
+        ctx.strokeRect(bbX - 6, bbY - 70, 12, 140)
+        // Target box (the shooter's square)
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+        ctx.lineWidth = 2
+        ctx.strokeRect(bbX - 6, rimYv - 25, 12, 30)
+        ctx.restore()
+      }
+
+      // --- 4. Net (canvas-drawn) ---
+      if (this.activeHoop) {
+        const netData = this.activeHoop.getNetInfo()
+        const netBottom = netData.topY + 75
+        const strands = 4
+        const stepX = (netData.endX - netData.startX) / (strands - 1)
+        const segments = 5
+        const segH = (netBottom - netData.topY) / segments
+
+        ctx.save()
+        ctx.strokeStyle = netData.color
+        ctx.lineWidth = 1.5
+        ctx.globalAlpha = 0.85
+
+        // Vertical strands tapering inward toward bottom
+        for (let si = 0; si < strands; si++) {
+          const t_i = si / (strands - 1)
+          ctx.beginPath()
+          for (let sj = 0; sj <= segments; sj++) {
+            const t = sj / segments
+            const inset = t * (netData.endX - netData.startX) * 0.1
+            const nx = netData.startX + si * stepX + (t_i < 0.5 ? inset : -inset)
+            const ny = netData.topY + sj * segH
+            if (sj === 0) ctx.moveTo(nx, ny)
+            else ctx.lineTo(nx, ny)
+          }
+          ctx.stroke()
+        }
+
+        // Horizontal cross-links
+        for (let hj = 0; hj <= segments; hj++) {
+          const t = hj / segments
+          const inset = t * (netData.endX - netData.startX) * 0.1
+          ctx.beginPath()
+          ctx.moveTo(netData.startX + inset, netData.topY + hj * segH)
+          ctx.lineTo(netData.endX - inset, netData.topY + hj * segH)
+          ctx.stroke()
+        }
+
+        ctx.restore()
+      }
+
+      // --- 5. Ball shadow + ball ---
       if (this.activeBall) {
+        const ballBody = this.activeBall.getBody()
+        const ballPos = ballBody.position
+        const heightAboveFloor = Math.max(0, floorY - ballPos.y)
+        const shadowAlpha = Math.max(0, 0.45 - heightAboveFloor / 600)
+        const shadowScaleX = Math.max(0.2, 1 - heightAboveFloor / 350)
+
+        ctx.save()
+        ctx.beginPath()
+        ctx.ellipse(ballPos.x, floorY - 4, 20 * shadowScaleX, 5, 0, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')'
+        ctx.fill()
+        ctx.restore()
+
         this.activeBall.render(ctx)
       }
-      // TODO: Render Hoop Net here later
     })
   }
 
