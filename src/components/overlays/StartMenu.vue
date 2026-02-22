@@ -10,12 +10,14 @@
     (e: 'start-competitive'): void
     (e: 'start-practice'): void
     (e: 'show-leaderboard'): void
+    (e: 'recalibrate'): void
   }>()
 
   // Refs
   const btnCompetitive = ref<HTMLElement | null>(null)
   const btnPractice = ref<HTMLElement | null>(null)
   const btnLeaderboard = ref<HTMLElement | null>(null)
+  const btnRecalibrate = ref<HTMLElement | null>(null)
 
   const hoverState = ref({
     target: null as string | null,
@@ -37,6 +39,7 @@
       { id: 'COMPETITIVE', el: btnCompetitive.value },
       { id: 'PRACTICE', el: btnPractice.value },
       { id: 'LEADERBOARD', el: btnLeaderboard.value },
+      { id: 'RECALIBRATE', el: btnRecalibrate.value },
     ]
 
     let found = null
@@ -97,6 +100,7 @@
     if (action === 'COMPETITIVE') emit('start-competitive')
     else if (action === 'PRACTICE') emit('start-practice')
     else if (action === 'LEADERBOARD') emit('show-leaderboard')
+    else if (action === 'RECALIBRATE') emit('recalibrate')
   }
 </script>
 
@@ -148,6 +152,21 @@
           LEADERBOARD 🏆
           <div
             v-if="hoverState.target === 'LEADERBOARD'"
+            class="btn-progress"
+            :style="{ width: hoverState.progress + '%' }"
+          ></div>
+        </button>
+
+        <!-- Recalibrate Button -->
+        <button
+          ref="btnRecalibrate"
+          class="menu-btn tertiary recalibrate"
+          :class="{ hovering: hoverState.target === 'RECALIBRATE' }"
+          @click="emit('recalibrate')"
+        >
+          RECALIBRATE 🎯
+          <div
+            v-if="hoverState.target === 'RECALIBRATE'"
             class="btn-progress"
             :style="{ width: hoverState.progress + '%' }"
           ></div>
@@ -264,6 +283,18 @@
     height: 4px;
     background: #00ff00;
     transition: width 0.1s linear;
+  }
+
+  .menu-btn.recalibrate {
+    border-color: rgba(255, 140, 0, 0.5);
+    color: rgba(255, 165, 0, 0.9);
+    font-size: 0.85rem;
+  }
+
+  .menu-btn.recalibrate:hover,
+  .menu-btn.recalibrate.hovering {
+    border-color: orange;
+    color: orange;
   }
 
   .mini-leaderboard {

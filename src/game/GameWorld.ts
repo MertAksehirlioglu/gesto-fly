@@ -11,6 +11,7 @@ export class GameWorld {
   private height: number
   public activeBall: Basketball | null = null
   public activeHoop: Hoop | null = null
+  public throwMultiplier: number = 0.3
 
   constructor(element: HTMLElement) {
     this.element = element
@@ -60,10 +61,9 @@ export class GameWorld {
   }
 
   spawnBall() {
-    // Spawn ball on the left side (Player side)
-    // Spawn significantly higher than the new floor (height - 150)
-    // e.g. height - 400
-    this.activeBall = new Basketball(200, this.height - 400)
+    // Spawn ball slightly right of the far-left edge so it sits closer to
+    // where the player's hand naturally rests (~28% from left).
+    this.activeBall = new Basketball(Math.round(this.width * 0.28), this.height - 400)
     this.addBody(this.activeBall.getBody())
   }
 
@@ -163,9 +163,8 @@ export class GameWorld {
       // Prune old data: If the peak was too long ago (> 200ms), ignore it.
       // But since buffer is only 10 frames, it's all recent.
 
-      // Apply Force Multiplier
-      // Adjusted from 2.0 to 0.3 because raw pixel velocity (e.g. 50px/frame) is already very high for Matter.js
-      const throwMultiplier = 0.3
+      // Apply Force Multiplier (configurable via setThrowMultiplier / calibration)
+      const throwMultiplier = this.throwMultiplier
 
       if (maxSpeed > 2) {
         // Min threshold to consider it a throw
@@ -293,9 +292,9 @@ export class GameWorld {
 
   resetBall() {
     if (this.activeBall) {
-      // Reset to start position
+      // Reset to start position (matches spawnBall)
       Matter.Body.setPosition(this.activeBall.getBody(), {
-        x: 200,
+        x: Math.round(this.width * 0.28),
         y: this.height - 400,
       })
       Matter.Body.setVelocity(this.activeBall.getBody(), { x: 0, y: 0 })
