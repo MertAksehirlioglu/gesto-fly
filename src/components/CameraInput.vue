@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { onMounted, onBeforeUnmount, ref } from 'vue'
-  import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision'
+  import { FilesetResolver, HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision'
 
   // ---------------------------------------------------------------------------
   // Exponential Moving Average smoother
@@ -29,6 +29,7 @@
   const isCameraActive = ref(false)
   let handLandmarker: HandLandmarker | null = null
   let animationFrameId: number | null = null
+  let drawingUtils: DrawingUtils | null = null
 
   const initHandLandmarker = async () => {
     const vision = await FilesetResolver.forVisionTasks(
@@ -60,7 +61,16 @@
 
       if (videoRef.value) {
         videoRef.value.srcObject = stream
-        videoRef.value.addEventListener('loadeddata', predictWebcam)
+        videoRef.value.addEventListener('loadeddata', () => {
+          // Size canvas to match video feed
+          if (canvasRef.value) {
+            canvasRef.value.width = 640
+            canvasRef.value.height = 480
+            const ctx = canvasRef.value.getContext('2d')
+            if (ctx) drawingUtils = new DrawingUtils(ctx)
+          }
+          predictWebcam()
+        })
         isCameraActive.value = true
       }
     } catch (error) {
@@ -97,8 +107,27 @@
     const startTimeMs = performance.now()
     const results = handLandmarker.detectForVideo(videoRef.value, startTimeMs)
 
+    // Clear canvas every frame
+    const canvas = canvasRef.value
+    const ctx = canvas ? canvas.getContext('2d') : null
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+
     if (results.landmarks && results.landmarks.length > 0) {
       const landmarks = results.landmarks[0]
+
+      // Draw hand skeleton
+      if (drawingUtils) {
+        drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
+          color: 'rgba(255, 255, 255, 0.6)',
+          lineWidth: 2,
+        })
+        drawingUtils.drawLandmarks(landmarks, {
+          color: (data) => (data.index === 4 || data.index === 8 ? '#ff4444' : 'rgba(255,255,255,0.9)'),
+          fillColor: (data) => (data.index === 4 || data.index === 8 ? 'rgba(255,80,80,0.5)' : 'rgba(255,255,255,0.3)'),
+          lineWidth: 1,
+          radius: (data) => (data.index === 4 || data.index === 8 ? 7 : 4),
+        })
+      }
 
 
       // Gesture Logic
@@ -189,12 +218,7 @@
         emit('gesture', { type: 'pinchEnd', x: 0, y: 0 })
       }
 
-      // Clear canvas if hand lost
-      const canvas = canvasRef.value
-      if (canvas) {
-        const ctx = canvas.getContext('2d')
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-      }
+      // Canvas already cleared at top of frame
     }
 
     if (isCameraActive.value) {
