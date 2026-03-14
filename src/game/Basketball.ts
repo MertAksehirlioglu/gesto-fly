@@ -5,8 +5,8 @@ export class Basketball {
 
   constructor(x: number, y: number, radius: number = 20) {
     this.body = Matter.Bodies.circle(x, y, radius, {
-      restitution: 0.9, // High bounciness
-      friction: 0.005,
+      restitution: 0.75,
+      friction: 0.3,
       frictionAir: 0.02,
       density: 0.04,
       render: {

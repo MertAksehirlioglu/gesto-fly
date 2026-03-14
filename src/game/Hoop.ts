@@ -3,28 +3,35 @@ import Matter from 'matter-js'
 export class Hoop {
   private composite: Matter.Composite
   private netParts: Matter.Body[] = []
-  private netLinks: Matter.Constraint[] = [] // Store horizontal links
+  private netLinks: Matter.Constraint[] = []
   private rimLeft: Matter.Body
   private rimRight: Matter.Body
-  public sensor!: Matter.Body // Public for collision access? Or via getter? Public easiest for game loop.
+  public sensor!: Matter.Body
+
+  // Net draw info
+  private netStartX: number = 0
+  private netEndX: number = 0
+  private netTopY: number = 0
+  private currentNetColor: string = 'white'
 
   constructor(x: number, y: number) {
     this.composite = Matter.Composite.create()
 
-    // 1. Pole (Ground to Backboard)
-    // Positioned slightly behind the backboard
+    // 1. Pole
     const poleX = x + 20
     const pole = Matter.Bodies.rectangle(poleX, y + 200, 15, 600, {
       isStatic: true,
-      render: { fillStyle: '#7f8c8d' }, // Gray metal
+      render: { fillStyle: '#7f8c8d' },
       label: 'pole',
     })
 
-    // 2. Backboard (Rectangle with border look)
+    // 2. Backboard — restitution for bank shots
     const backboard = Matter.Bodies.rectangle(x, y - 50, 10, 140, {
       isStatic: true,
+      restitution: 0.65,
+      friction: 0.1,
       render: {
-        fillStyle: 'rgba(255, 255, 255, 0.9)',
+        fillStyle: 'rgba(255, 255, 255, 0.0)',
         strokeStyle: '#333',
         lineWidth: 3,
       },
@@ -35,62 +42,58 @@ export class Hoop {
     const rimY = y + 20
     const rimWidth = 80
 
-    // Rim Bracket (Neck) connecting backboard to rim
-    // Small rectangle between backboard and rim circles
+    // Rim neck bracket
     const rimNeck = Matter.Bodies.rectangle(x - 5, rimY + 2, 10, 8, {
       isStatic: true,
       render: { fillStyle: '#e74c3c' },
     })
 
-    // Sensor for Scoring (Transparent, Sensor mode)
-    // Placed slightly below the rim level to ensure ball has passed through
+    // Scoring sensor — invisible
     const sensorY = rimY + 30
-    // Center x between rimLeft and rimRight?
-    // rimLeft is at x - rimWidth (approx x - 80)
-    // rimRight is at x - 5
-    // so center is approx x - 42.5
     const sensorX = x - rimWidth / 2 - 2.5
-
     this.sensor = Matter.Bodies.rectangle(sensorX, sensorY, 40, 5, {
       isStatic: true,
-      isSensor: true, // Does not physically collide
+      isSensor: true,
       label: 'hoopSensor',
-      render: {
-        visible: true, // Debug: Set to false later. Keeping true for verifying position.
-        fillStyle: 'rgba(0, 255, 0, 0.5)', // Green debug line
-      },
+      render: { visible: false },
     })
 
-    this.rimLeft = Matter.Bodies.circle(x - rimWidth, rimY, 4, {
+    // Rim bodies — flat rectangles so the ball can land/roll on them
+    this.rimLeft = Matter.Bodies.rectangle(x - rimWidth, rimY, 12, 6, {
       isStatic: true,
       label: 'rim',
+      restitution: 0.4,
+      friction: 0.3,
+      render: { fillStyle: '#e74c3c' },
+    })
+    this.rimRight = Matter.Bodies.rectangle(x - 5, rimY, 12, 6, {
+      isStatic: true,
+      label: 'rim',
+      restitution: 0.4,
+      friction: 0.3,
       render: { fillStyle: '#e74c3c' },
     })
 
-    this.rimRight = Matter.Bodies.circle(x - 5, rimY, 4, {
-      isStatic: true,
-      label: 'rim',
-      render: { fillStyle: '#e74c3c' },
-    })
-
-    // 4. Net (Cloth Physics / Chain)
+    // 4. Net (physics only — rendered visually in GameWorld)
     const netGroup = Matter.Body.nextGroup(true)
     const netSegments = 5
     const netLength = 15
 
-    // Create 3 vertical chains hanging from rim range
     const startX = x - rimWidth
     const endX = x - 5
-    const stepX = (endX - startX) / 3 // 4 strands
+    const stepX = (endX - startX) / 3
 
-    // Store all vertical strands to connect them horizontally later
+    // Store net bounds for canvas drawing
+    this.netStartX = startX
+    this.netEndX = endX
+    this.netTopY = rimY
+
     const allStrands: Matter.Body[][] = []
 
     for (let i = 0; i <= 3; i++) {
       const chainX = startX + i * stepX
-      const chainStartY = rimY // Start exactly at rimY (anchor point) to avoid snap
+      const chainStartY = rimY
 
-      // Manually create bodies perfectly aligned to avoid initial spring jitter
       const strandBodies: Matter.Body[] = []
       for (let j = 0; j < netSegments; j++) {
         const body = Matter.Bodies.rectangle(
@@ -100,8 +103,8 @@ export class Hoop {
           netLength,
           {
             collisionFilter: { group: netGroup },
-            frictionAir: 0.1, // Increased friction to reduce swinging
-            render: { fillStyle: 'white' },
+            frictionAir: 0.1,
+            render: { fillStyle: 'rgba(255,255,255,0.85)' },
           },
         )
         strandBodies.push(body)
@@ -110,52 +113,41 @@ export class Hoop {
       const strand = Matter.Composite.create()
       Matter.Composite.add(strand, strandBodies)
 
-      // Link them tightly
-      // Connect BOTTOM of Previous (0.5) to TOP of Next (-0.5)
       Matter.Composites.chain(strand, 0, 0.5, 0, -0.5, {
         stiffness: 0.8,
         length: 0,
         render: { visible: false },
       })
 
-      // Attach top of strand to static rim-line
-      // Important: Anchor point must match top body's top point to avoid "snap"
       const anchorPt = { x: chainX, y: rimY }
       const anchor = Matter.Constraint.create({
         pointA: anchorPt,
         bodyB: strandBodies[0],
         pointB: { x: 0, y: -netLength / 2 },
         stiffness: 0.9,
-        length: 0, // Keep tight
+        length: 0,
       })
 
       Matter.Composite.add(this.composite, [strand, anchor])
-
-      // Store bodies to update color later
       this.netParts.push(...strand.bodies)
       allStrands.push(strandBodies)
     }
 
-    // 5. Horizontal Connections (The Mesh)
-    // Connect corresponding segments of adjacent strands
+    // 5. Horizontal net links — invisible
     for (let i = 0; i < allStrands.length - 1; i++) {
       const currentStrand = allStrands[i]
       const nextStrand = allStrands[i + 1]
 
       for (let j = 0; j < currentStrand.length; j++) {
-        const bodyA = currentStrand[j]
-        const bodyB = nextStrand[j]
-
-        // Connect centers? Or maybe top-to-top? Centers is easiest/safest
         const link = Matter.Constraint.create({
-          bodyA: bodyA,
-          bodyB: bodyB,
-          stiffness: 0.5, // Less stiff than vertical to allow expansion
+          bodyA: currentStrand[j],
+          bodyB: nextStrand[j],
+          stiffness: 0.5,
           render: {
             visible: true,
             type: 'line',
-            strokeStyle: '#FFFFFF', // Default white
-            lineWidth: 3, // Match vertical thickness
+            strokeStyle: 'rgba(255,255,255,0.7)',
+            lineWidth: 2,
           },
         })
 
@@ -174,25 +166,29 @@ export class Hoop {
     ])
   }
 
-  // ... (color logic)
-
-  // define property at top of class
-  // private sensor: Matter.Body
-
   setNetColor(color: string) {
-    if (color.includes('gradient')) return // Simple colors only for now
+    if (color.includes('gradient')) return
 
-    // Update Vertical Bodies
+    this.currentNetColor = color
+
     this.netParts.forEach((body) => {
       body.render.fillStyle = color
     })
 
-    // Update Horizontal Constraints
     this.netLinks.forEach((link) => {
       if (link.render) {
         link.render.strokeStyle = color
       }
     })
+  }
+
+  getNetInfo(): { startX: number; endX: number; topY: number; color: string } {
+    return {
+      startX: this.netStartX,
+      endX: this.netEndX,
+      topY: this.netTopY,
+      color: this.currentNetColor,
+    }
   }
 
   getComposite(): Matter.Composite {
