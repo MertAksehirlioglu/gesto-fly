@@ -156,11 +156,26 @@
     saveToLeaderboard()
   }
 
+  // [Feature] Score Celebration Animation
+  const celebrating = ref(false)
+
   const onScore = () => {
-
-
     if (gameState.value === 'PLAYING') {
       score.value++
+      celebrating.value = true
+
+      // Auto-dismiss after 1.5s, then reset ball
+      setTimeout(() => {
+        celebrating.value = false
+        if (gameWorld) {
+          gameWorld.completeScore()
+        }
+      }, 1500)
+    } else {
+      // Not playing — still complete the score reset
+      if (gameWorld) {
+        gameWorld.completeScore()
+      }
     }
   }
 
@@ -294,6 +309,7 @@
       :score="score"
       :time-left="timeLeft"
       :is-infinite="isInfinite"
+      :celebrating="celebrating"
       @exit="backToMenu"
     />
 
@@ -305,6 +321,20 @@
       @play-again="startGame('COMPETITIVE')"
       @menu="backToMenu"
     />
+
+    <!-- [Feature] Score Celebration Animation Overlay -->
+    <Transition name="celebration">
+      <div v-if="celebrating" class="celebration-overlay">
+        <!-- Confetti emoji particles -->
+        <span class="confetti c1">🎉</span>
+        <span class="confetti c2">🏀</span>
+        <span class="confetti c3">🎉</span>
+        <span class="confetti c4">🏀</span>
+        <span class="confetti c5">🎉</span>
+        <span class="confetti c6">🏀</span>
+        <div class="celebration-text">SCORE!</div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -334,5 +364,73 @@
     z-index: 9999;
     transition: background-color 0.2s;
   }
+
+  /* ── [Feature] Score Celebration Overlay ── */
+  .celebration-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* Vue Transition */
+  .celebration-enter-active {
+    animation: celebFadeIn 0.2s ease-out forwards;
+  }
+  .celebration-leave-active {
+    animation: celebFadeOut 0.3s ease-in forwards;
+  }
+
+  @keyframes celebFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes celebFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+
+  /* Score text with bounce */
+  .celebration-text {
+    font-size: 5rem;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 40px rgba(255,200,0,0.8);
+    animation: scoreBounce 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    letter-spacing: 4px;
+  }
+
+  @keyframes scoreBounce {
+    0%   { transform: scale(0.3); opacity: 0; }
+    50%  { transform: scale(1.25); opacity: 1; }
+    75%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
+  }
+
+  /* Confetti emojis floating up */
+  .confetti {
+    position: absolute;
+    font-size: 2.5rem;
+    animation: floatUp 1.4s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes floatUp {
+    0%   { transform: translateY(60px) scale(0.5); opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: translateY(-160px) scale(1.2) rotate(30deg); opacity: 0; }
+  }
+
+  .c1 { left: 12%;  bottom: 30%; animation-delay: 0s;    animation-duration: 1.2s; }
+  .c2 { left: 28%;  bottom: 25%; animation-delay: 0.1s;  animation-duration: 1.4s; }
+  .c3 { left: 48%;  bottom: 20%; animation-delay: 0.05s; animation-duration: 1.3s; }
+  .c4 { right: 28%; bottom: 25%; animation-delay: 0.15s; animation-duration: 1.5s; }
+  .c5 { right: 12%; bottom: 30%; animation-delay: 0.08s; animation-duration: 1.2s; }
+  .c6 { left: 65%;  bottom: 22%; animation-delay: 0.2s;  animation-duration: 1.35s; }
 </style>
 ```

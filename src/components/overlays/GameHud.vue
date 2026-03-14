@@ -6,6 +6,7 @@
     score: number
     timeLeft: number
     isInfinite: boolean
+    celebrating?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -79,7 +80,7 @@
   <div class="hud">
     <div class="score-board">
       <div class="label">SCORE</div>
-      <div class="value">{{ score }}</div>
+      <div class="value" :class="{ 'score-bounce': celebrating }">{{ score }}</div>
     </div>
 
     <div
@@ -143,6 +144,19 @@
   .timer-board.critical .value {
     color: #ff4757;
     animation: pulse 1s infinite;
+  }
+
+  /* [Feature] Score bounce animation on basket */
+  .value.score-bounce {
+    animation: scorePop 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    color: #FFD700;
+  }
+
+  @keyframes scorePop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.6); }
+    70%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
   }
 
   .exit-btn {
