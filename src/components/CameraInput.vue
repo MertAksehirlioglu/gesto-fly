@@ -27,22 +27,47 @@
   const videoRef = ref<HTMLVideoElement | null>(null)
   const canvasRef = ref<HTMLCanvasElement | null>(null)
   const isCameraActive = ref(false)
+
+  // [Code Quality] Camera Permission Error Handling
+  const cameraError = ref<string | null>(null)
+
   let handLandmarker: HandLandmarker | null = null
   let animationFrameId: number | null = null
   let drawingUtils: DrawingUtils | null = null
+
+  // Keep a reference to the active stream for visibility-change cleanup
+  let activeStream: MediaStream | null = null
 
   const initHandLandmarker = async () => {
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm',
     )
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-        delegate: 'GPU',
-      },
-      runningMode: 'VIDEO',
-      numHands: 1,
-    })
+
+    // [Performance] GPU Delegate Fallback for HandLandmarker
+    try {
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numHands: 1,
+      })
+    } catch (_gpuErr) {
+      console.warn('MediaPipe: GPU delegate failed, falling back to CPU')
+      try {
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+            delegate: 'CPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 1,
+        })
+      } catch (cpuErr) {
+        throw cpuErr
+      }
+    }
   }
 
   const startCamera = async () => {
@@ -51,6 +76,9 @@
       return
     }
 
+    // Clear any previous error
+    cameraError.value = null
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -58,6 +86,8 @@
           height: 480,
         },
       })
+
+      activeStream = stream
 
       if (videoRef.value) {
         videoRef.value.srcObject = stream
@@ -74,7 +104,34 @@
         isCameraActive.value = true
       }
     } catch (error) {
+      // [Code Quality] User-friendly error instead of silent console.error
       console.error('Error accessing webcam:', error)
+      cameraError.value = 'Camera access denied. Please allow camera access and try again.'
+    }
+  }
+
+  const stopCamera = () => {
+    isCameraActive.value = false
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId)
+      animationFrameId = null
+    }
+    if (activeStream) {
+      activeStream.getTracks().forEach((t) => t.stop())
+      activeStream = null
+    }
+    if (videoRef.value) {
+      videoRef.value.srcObject = null
+    }
+  }
+
+  // [Security] Camera Stream Cleanup on Tab Visibility Change
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      stopCamera()
+    } else {
+      // Resume camera when tab becomes visible again
+      startCamera()
     }
   }
 
@@ -231,18 +288,16 @@
   onMounted(async () => {
     await initHandLandmarker()
     startCamera()
+
+    // [Security] Listen for tab visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange)
   })
 
   onBeforeUnmount(() => {
-    isCameraActive.value = false
-    if (videoRef.value && videoRef.value.srcObject) {
-      const stream = videoRef.value.srcObject as MediaStream
-      const tracks = stream.getTracks()
-      tracks.forEach((track) => track.stop())
-    }
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId)
-    }
+    stopCamera()
+
+    // [Security] Remove visibility change listener
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
   })
 </script>
 
@@ -257,6 +312,20 @@
     ></video>
     <!-- Canvas for landmarks removed/hidden? No, keep it for potential future use or just leave logic empty -->
     <canvas ref="canvasRef" class="output_canvas"></canvas>
+
+    <!-- [Code Quality] Camera Permission Error Overlay -->
+    <div v-if="cameraError" class="camera-error-overlay">
+      <div class="camera-error-content">
+        <div class="camera-error-icon">📷</div>
+        <p class="camera-error-message">{{ cameraError }}</p>
+        <button
+          class="camera-retry-btn"
+          @click="() => { cameraError = null; startCamera() }"
+        >
+          Allow Camera &amp; Retry
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -284,5 +353,57 @@
   .output_canvas {
     z-index: 1; /* Overlay on top of video */
     pointer-events: none; /* Ensure it doesn't block interactions */
+  }
+
+  /* [Code Quality] Camera error overlay styles */
+  .camera-error-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .camera-error-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    max-width: 400px;
+    text-align: center;
+  }
+
+  .camera-error-icon {
+    font-size: 3rem;
+  }
+
+  .camera-error-message {
+    color: white;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .camera-retry-btn {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .camera-retry-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
   }
 </style>

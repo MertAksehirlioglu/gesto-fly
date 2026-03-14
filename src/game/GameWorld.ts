@@ -358,15 +358,16 @@ export class GameWorld {
     if (this.isResetting) return // Debounce
 
     console.log('SCORE!')
-    if (this.onScore) this.onScore()
-
     this.isResetting = true
 
-    // Delay reset for celebration/visual confirmation
-    setTimeout(() => {
-      this.resetBall()
-      this.isResetting = false
-    }, 1000)
+    // onScore callback controls timing (celebration overlay + ball reset)
+    if (this.onScore) this.onScore()
+  }
+
+  // Called by the consumer after celebration ends to reset the ball
+  completeScore() {
+    this.resetBall()
+    this.isResetting = false
   }
 
   resetBall() {
