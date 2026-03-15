@@ -311,6 +311,7 @@
     <CalibrationOverlay
       v-if="gameState === 'CALIBRATING'"
       :current-pinch-distance="latestPinchDistance"
+      :cursor-pos="cursorP"
       @complete="onCalibrationComplete"
       @skip="onCalibrationSkip"
     />

@@ -1,8 +1,10 @@
 <script setup lang="ts">
   import { ref, watch, computed, onUnmounted } from 'vue'
+  import { useGestureDwell } from '../../composables/useGestureDwell'
 
   const props = defineProps<{
     currentPinchDistance: number
+    cursorPos: { x: number; y: number }
   }>()
 
   const emit = defineEmits<{
@@ -87,6 +89,34 @@
     emit('skip')
   }
 
+  // Dwell-based finger interaction for both buttons
+  const btnStartPlaying = ref<HTMLElement | null>(null)
+  const btnSkip = ref<HTMLElement | null>(null)
+
+  const startPlayingDwell = useGestureDwell({ onComplete: onStartPlaying })
+  const skipDwell = useGestureDwell({ onComplete: onSkip })
+
+  watch(
+    () => props.cursorPos,
+    (pos) => checkButtons(pos.x, pos.y),
+  )
+
+  const checkButtons = (x: number, y: number) => {
+    const buttons = [
+      { el: btnStartPlaying.value, dwell: startPlayingDwell },
+      { el: btnSkip.value, dwell: skipDwell },
+    ]
+    for (const btn of buttons) {
+      if (btn.el) {
+        const rect = btn.el.getBoundingClientRect()
+        const isHover =
+          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        if (isHover) btn.dwell.startDwell()
+        else btn.dwell.cancelDwell()
+      }
+    }
+  }
+
   // Calibration begins once hand is detected (see watch above)
 
   onUnmounted(() => {
@@ -97,15 +127,19 @@
 <template>
   <div class="calibration-overlay">
     <!-- Skip button -->
-    <v-btn
+    <button
+      ref="btnSkip"
       class="skip-btn"
-      variant="text"
-      size="small"
-      color="grey"
+      :class="{ hovering: skipDwell.isActive.value }"
       @click="onSkip"
     >
       Skip
-    </v-btn>
+      <div
+        v-if="skipDwell.isActive.value"
+        class="btn-progress"
+        :style="{ width: skipDwell.progress.value + '%' }"
+      ></div>
+    </button>
 
     <v-card class="calibration-card" rounded="xl" color="rgba(10,10,20,0.92)">
       <v-card-text class="text-center pa-8">
@@ -180,15 +214,19 @@
               {{ (recordedMin + (recordedMax - recordedMin) * 0.3).toFixed(4) }}
             </v-chip>
           </div>
-          <v-btn
-            color="orange"
-            size="large"
-            rounded="xl"
-            class="px-8"
+          <button
+            ref="btnStartPlaying"
+            class="start-playing-btn"
+            :class="{ hovering: startPlayingDwell.isActive.value }"
             @click="onStartPlaying"
           >
             Start Playing 🏀
-          </v-btn>
+            <div
+              v-if="startPlayingDwell.isActive.value"
+              class="btn-progress"
+              :style="{ width: startPlayingDwell.progress.value + '%' }"
+            ></div>
+          </button>
         </template>
       </v-card-text>
     </v-card>
@@ -215,6 +253,52 @@
     position: absolute;
     top: 16px;
     right: 16px;
+    background: transparent;
+    border: none;
+    color: #9e9e9e;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    transition:
+      transform 0.2s,
+      color 0.2s;
+  }
+
+  .skip-btn.hovering {
+    transform: scale(1.05);
+    color: white;
+  }
+
+  .start-playing-btn {
+    background: linear-gradient(135deg, #fb8c00, #e65100);
+    color: white;
+    border: none;
+    padding: 16px 40px;
+    border-radius: 28px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
+
+  .start-playing-btn.hovering {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+  }
+
+  .btn-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: #00ff00;
+    transition: width 0.1s linear;
   }
 
   .countdown-ring {

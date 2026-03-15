@@ -1,8 +1,13 @@
 <script setup lang="ts">
-  import { onMounted, onUnmounted, ref } from 'vue'
+  import { onMounted, onUnmounted, ref, watch } from 'vue'
+  import { useGestureDwell } from '../../composables/useGestureDwell'
 
   const isMobile = ref(false)
   const dismissed = ref(false)
+
+  const props = defineProps<{
+    cursorPos: { x: number; y: number }
+  }>()
 
   const checkMobile = () => {
     // Check 1: User Agent (Phones/Tablets)
@@ -21,6 +26,24 @@
   const dismiss = () => {
     dismissed.value = true
   }
+
+  const btnContinue = ref<HTMLElement | null>(null)
+  const continueDwell = useGestureDwell({ onComplete: dismiss })
+
+  watch(
+    () => props.cursorPos,
+    (pos) => {
+      if (!btnContinue.value) return
+      const rect = btnContinue.value.getBoundingClientRect()
+      const isHover =
+        pos.x >= rect.left &&
+        pos.x <= rect.right &&
+        pos.y >= rect.top &&
+        pos.y <= rect.bottom
+      if (isHover) continueDwell.startDwell()
+      else continueDwell.cancelDwell()
+    },
+  )
 
   onMounted(() => {
     checkMobile()
@@ -45,8 +68,18 @@
         For the best experience, please play on a laptop or desktop computer.
       </p>
 
-      <button class="continue-btn" @click="dismiss">
+      <button
+        ref="btnContinue"
+        class="continue-btn"
+        :class="{ hovering: continueDwell.isActive.value }"
+        @click="dismiss"
+      >
         I understand, continue anyway
+        <div
+          v-if="continueDwell.isActive.value"
+          class="btn-progress"
+          :style="{ width: continueDwell.progress.value + '%' }"
+        ></div>
       </button>
     </div>
   </div>
@@ -110,11 +143,23 @@
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.8rem;
+    position: relative;
+    overflow: hidden;
     transition: all 0.2s;
   }
 
-  .continue-btn:hover {
+  .continue-btn:hover,
+  .continue-btn.hovering {
     border-color: white;
     color: white;
+  }
+
+  .btn-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: #00ff00;
+    transition: width 0.1s linear;
   }
 </style>
