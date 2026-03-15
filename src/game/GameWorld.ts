@@ -219,6 +219,14 @@ export class GameWorld {
             }
           }
         }
+
+        // Rim / backboard hit — trigger audio clank
+        const labels = [bodyA.label, bodyB.label]
+        const hasBall = labels.includes('Basketball')
+        const hasRimOrBoard = labels.includes('rim') || labels.includes('backboard')
+        if (hasBall && hasRimOrBoard && this.onRimHit) {
+          this.onRimHit()
+        }
       }
     })
 
@@ -352,6 +360,8 @@ export class GameWorld {
 
   // Score Callback
   public onScore: (() => void) | null = null
+  /** Called when the ball hits a rim or backboard body */
+  public onRimHit: (() => void) | null = null
   private isResetting = false
 
   handleScore() {

@@ -8,11 +8,15 @@
   import LeaderboardOverlay from './overlays/LeaderboardOverlay.vue'
   import CalibrationOverlay from './overlays/CalibrationOverlay.vue'
   import { useCalibration } from '../composables/useCalibration'
+  import { useGameAudio } from '../composables/useGameAudio'
 
 
   const props = defineProps<{
     currentTeamName: string
   }>()
+
+  // --- Audio ---
+  const { playSwish, playRimClank, playCrowdCheer } = useGameAudio()
 
   // --- Calibration ---
   const { isCalibrated, pinchThreshold, throwMultiplier, finalize, reset } = useCalibration()
@@ -163,6 +167,7 @@
     if (gameState.value === 'PLAYING') {
       score.value++
       celebrating.value = true
+      playCrowdCheer()
 
       // Auto-dismiss after 1.5s, then reset ball
       setTimeout(() => {
@@ -213,6 +218,7 @@
         gameWorld.startGrab(px, py)
       } else if (gesture.type === 'pinchEnd') {
         gameWorld.endGrab()
+        playSwish()
       }
     }
   }
@@ -227,6 +233,7 @@
         gameWorld = new GameWorld(canvasRef.value)
         gameWorld.throwMultiplier = throwMultiplier.value
         gameWorld.onScore = onScore
+        gameWorld.onRimHit = playRimClank
         gameWorld.start()
         gameWorld.spawnBall()
         gameWorld.spawnHoop()
