@@ -25,7 +25,8 @@
   const checkButtons = (x: number, y: number) => {
     if (!btnBack.value) return
     const rect = btnBack.value.getBoundingClientRect()
-    const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+    const isHover =
+      x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
     if (isHover) {
       backDwell.startDwell()
     } else {

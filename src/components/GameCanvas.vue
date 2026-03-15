@@ -10,7 +10,6 @@
   import { useCalibration } from '../composables/useCalibration'
   import { useGameAudio } from '../composables/useGameAudio'
 
-
   const props = defineProps<{
     currentTeamName: string
   }>()
@@ -19,7 +18,8 @@
   const { playSwish, playRimClank, playCrowdCheer } = useGameAudio()
 
   // --- Calibration ---
-  const { isCalibrated, pinchThreshold, throwMultiplier, finalize, reset } = useCalibration()
+  const { isCalibrated, pinchThreshold, throwMultiplier, finalize, reset } =
+    useCalibration()
   const latestPinchDistance = ref(0)
 
   const handlePinchDistance = (d: number) => {
@@ -48,7 +48,12 @@
   let gameWorld: GameWorld | null = null
 
   // Game States
-  type GameState = 'CALIBRATING' | 'MENU' | 'PLAYING' | 'GAME_OVER' | 'LEADERBOARD'
+  type GameState =
+    | 'CALIBRATING'
+    | 'MENU'
+    | 'PLAYING'
+    | 'GAME_OVER'
+    | 'LEADERBOARD'
   type GameMode = 'COMPETITIVE' | 'PRACTICE'
 
   const gameState = ref<GameState>(isCalibrated.value ? 'MENU' : 'CALIBRATING')
@@ -288,6 +293,7 @@
     <CalibrationOverlay
       v-if="gameState === 'CALIBRATING'"
       :current-pinch-distance="latestPinchDistance"
+      :cursor-pos="cursorP"
       @complete="onCalibrationComplete"
       @skip="onCalibrationSkip"
     />
@@ -394,12 +400,20 @@
   }
 
   @keyframes celebFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
   @keyframes celebFadeOut {
-    from { opacity: 1; }
-    to   { opacity: 0; }
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
   }
 
   /* Score text with bounce */
@@ -407,16 +421,28 @@
     font-size: 5rem;
     font-weight: 900;
     color: #fff;
-    text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 40px rgba(255,200,0,0.8);
+    text-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.8),
+      0 0 40px rgba(255, 200, 0, 0.8);
     animation: scoreBounce 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
     letter-spacing: 4px;
   }
 
   @keyframes scoreBounce {
-    0%   { transform: scale(0.3); opacity: 0; }
-    50%  { transform: scale(1.25); opacity: 1; }
-    75%  { transform: scale(0.9); }
-    100% { transform: scale(1); }
+    0% {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.25);
+      opacity: 1;
+    }
+    75% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   /* Confetti emojis floating up */
@@ -428,16 +454,54 @@
   }
 
   @keyframes floatUp {
-    0%   { transform: translateY(60px) scale(0.5); opacity: 0; }
-    20%  { opacity: 1; }
-    100% { transform: translateY(-160px) scale(1.2) rotate(30deg); opacity: 0; }
+    0% {
+      transform: translateY(60px) scale(0.5);
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-160px) scale(1.2) rotate(30deg);
+      opacity: 0;
+    }
   }
 
-  .c1 { left: 12%;  bottom: 30%; animation-delay: 0s;    animation-duration: 1.2s; }
-  .c2 { left: 28%;  bottom: 25%; animation-delay: 0.1s;  animation-duration: 1.4s; }
-  .c3 { left: 48%;  bottom: 20%; animation-delay: 0.05s; animation-duration: 1.3s; }
-  .c4 { right: 28%; bottom: 25%; animation-delay: 0.15s; animation-duration: 1.5s; }
-  .c5 { right: 12%; bottom: 30%; animation-delay: 0.08s; animation-duration: 1.2s; }
-  .c6 { left: 65%;  bottom: 22%; animation-delay: 0.2s;  animation-duration: 1.35s; }
+  .c1 {
+    left: 12%;
+    bottom: 30%;
+    animation-delay: 0s;
+    animation-duration: 1.2s;
+  }
+  .c2 {
+    left: 28%;
+    bottom: 25%;
+    animation-delay: 0.1s;
+    animation-duration: 1.4s;
+  }
+  .c3 {
+    left: 48%;
+    bottom: 20%;
+    animation-delay: 0.05s;
+    animation-duration: 1.3s;
+  }
+  .c4 {
+    right: 28%;
+    bottom: 25%;
+    animation-delay: 0.15s;
+    animation-duration: 1.5s;
+  }
+  .c5 {
+    right: 12%;
+    bottom: 30%;
+    animation-delay: 0.08s;
+    animation-duration: 1.2s;
+  }
+  .c6 {
+    left: 65%;
+    bottom: 22%;
+    animation-delay: 0.2s;
+    animation-duration: 1.35s;
+  }
 </style>
 ```

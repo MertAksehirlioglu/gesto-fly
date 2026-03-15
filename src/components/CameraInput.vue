@@ -1,6 +1,10 @@
 <script setup lang="ts">
   import { onMounted, onBeforeUnmount, ref } from 'vue'
-  import { FilesetResolver, HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision'
+  import {
+    FilesetResolver,
+    HandLandmarker,
+    DrawingUtils,
+  } from '@mediapipe/tasks-vision'
 
   // ---------------------------------------------------------------------------
   // Exponential Moving Average smoother
@@ -10,18 +14,25 @@
   class EMA {
     private alpha: number
     private value: number | null = null
-    constructor(alpha = 0.3) { this.alpha = alpha }
+    constructor(alpha = 0.3) {
+      this.alpha = alpha
+    }
     update(raw: number): number {
-      this.value = this.value === null ? raw : this.alpha * raw + (1 - this.alpha) * this.value
+      this.value =
+        this.value === null
+          ? raw
+          : this.alpha * raw + (1 - this.alpha) * this.value
       return this.value
     }
-    reset() { this.value = null }
+    reset() {
+      this.value = null
+    }
   }
 
-  const cursorX  = new EMA(0.3)
-  const cursorY  = new EMA(0.3)
-  const pinchX   = new EMA(0.35)
-  const pinchY   = new EMA(0.35)
+  const cursorX = new EMA(0.3)
+  const cursorY = new EMA(0.3)
+  const pinchX = new EMA(0.35)
+  const pinchY = new EMA(0.35)
   const pinchDist = new EMA(0.4)
 
   const videoRef = ref<HTMLVideoElement | null>(null)
@@ -106,7 +117,8 @@
     } catch (error) {
       // [Code Quality] User-friendly error instead of silent console.error
       console.error('Error accessing webcam:', error)
-      cameraError.value = 'Camera access denied. Please allow camera access and try again.'
+      cameraError.value =
+        'Camera access denied. Please allow camera access and try again.'
     }
   }
 
@@ -174,18 +186,27 @@
 
       // Draw hand skeleton
       if (drawingUtils) {
-        drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
-          color: 'rgba(255, 255, 255, 0.6)',
-          lineWidth: 2,
-        })
+        drawingUtils.drawConnectors(
+          landmarks,
+          HandLandmarker.HAND_CONNECTIONS,
+          {
+            color: 'rgba(255, 255, 255, 0.6)',
+            lineWidth: 2,
+          },
+        )
         drawingUtils.drawLandmarks(landmarks, {
-          color: (data) => (data.index === 4 || data.index === 8 ? '#ff4444' : 'rgba(255,255,255,0.9)'),
-          fillColor: (data) => (data.index === 4 || data.index === 8 ? 'rgba(255,80,80,0.5)' : 'rgba(255,255,255,0.3)'),
+          color: (data) =>
+            data.index === 4 || data.index === 8
+              ? '#ff4444'
+              : 'rgba(255,255,255,0.9)',
+          fillColor: (data) =>
+            data.index === 4 || data.index === 8
+              ? 'rgba(255,80,80,0.5)'
+              : 'rgba(255,255,255,0.3)',
           lineWidth: 1,
           radius: (data) => (data.index === 4 || data.index === 8 ? 7 : 4),
         })
       }
-
 
       // Gesture Logic
       // Index tip: 8, Thumb tip: 4
@@ -218,8 +239,8 @@
       // Cursor: follow pinch center while grabbing (stable, avoids landmark
       // confusion between thumb/index tip in awkward orientations), otherwise
       // follow index tip for hover/UI interactions.
-      const rawCursorX = isPinching ? (1 - centerX) : (1 - indexTip.x)
-      const rawCursorY = isPinching ? centerY         : indexTip.y
+      const rawCursorX = isPinching ? 1 - centerX : 1 - indexTip.x
+      const rawCursorY = isPinching ? centerY : indexTip.y
       const cursorVisualX = cursorX.update(rawCursorX)
       const cursorVisualY = cursorY.update(rawCursorY)
 
@@ -265,8 +286,10 @@
       }
     } else {
       // Hand lost — reset smoothers so stale values don't bleed into next detection
-      cursorX.reset(); cursorY.reset()
-      pinchX.reset();  pinchY.reset()
+      cursorX.reset()
+      cursorY.reset()
+      pinchX.reset()
+      pinchY.reset()
       pinchDist.reset()
 
       if (isPinching) {
@@ -320,7 +343,12 @@
         <p class="camera-error-message">{{ cameraError }}</p>
         <button
           class="camera-retry-btn"
-          @click="() => { cameraError = null; startCamera() }"
+          @click="
+            () => {
+              cameraError = null
+              startCamera()
+            }
+          "
         >
           Allow Camera &amp; Retry
         </button>

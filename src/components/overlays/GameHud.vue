@@ -16,9 +16,12 @@
   }>()
 
   const btnExit = ref<HTMLElement | null>(null)
+  const btnMute = ref<HTMLElement | null>(null)
+
+  const { muted, toggleMute } = useGameAudio()
 
   const exitDwell = useGestureDwell({ onComplete: () => emit('exit') })
-  const { muted, toggleMute } = useGameAudio()
+  const muteDwell = useGestureDwell({ onComplete: toggleMute })
 
   watch(
     () => props.cursorPos,
@@ -28,13 +31,18 @@
   )
 
   const checkButtons = (x: number, y: number) => {
-    if (!btnExit.value) return
-    const rect = btnExit.value.getBoundingClientRect()
-    const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
-    if (isHover) {
-      exitDwell.startDwell()
-    } else {
-      exitDwell.cancelDwell()
+    const buttons = [
+      { el: btnExit.value, dwell: exitDwell },
+      { el: btnMute.value, dwell: muteDwell },
+    ]
+    for (const btn of buttons) {
+      if (btn.el) {
+        const rect = btn.el.getBoundingClientRect()
+        const isHover =
+          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        if (isHover) btn.dwell.startDwell()
+        else btn.dwell.cancelDwell()
+      }
     }
   }
 </script>
@@ -43,7 +51,9 @@
   <div class="hud">
     <div class="score-board">
       <div class="label">SCORE</div>
-      <div class="value" :class="{ 'score-bounce': celebrating }">{{ score }}</div>
+      <div class="value" :class="{ 'score-bounce': celebrating }">
+        {{ score }}
+      </div>
     </div>
 
     <div
@@ -68,8 +78,19 @@
       ></div>
     </button>
 
-    <button class="mute-btn" @click="toggleMute" :title="muted ? 'Unmute' : 'Mute'">
+    <button
+      ref="btnMute"
+      class="mute-btn"
+      :class="{ hovering: muteDwell.isActive.value }"
+      :title="muted ? 'Unmute' : 'Mute'"
+      @click="toggleMute"
+    >
       {{ muted ? '🔇' : '🔊' }}
+      <div
+        v-if="muteDwell.isActive.value"
+        class="btn-progress"
+        :style="{ width: muteDwell.progress.value + '%' }"
+      ></div>
     </button>
   </div>
 </template>
@@ -116,14 +137,22 @@
   /* [Feature] Score bounce animation on basket */
   .value.score-bounce {
     animation: scorePop 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-    color: #FFD700;
+    color: #ffd700;
   }
 
   @keyframes scorePop {
-    0%   { transform: scale(1); }
-    40%  { transform: scale(1.6); }
-    70%  { transform: scale(0.9); }
-    100% { transform: scale(1); }
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.6);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   .exit-btn {
@@ -167,9 +196,12 @@
     cursor: pointer;
     backdrop-filter: blur(4px);
     line-height: normal;
+    position: relative;
+    overflow: hidden;
     transition: transform 0.15s;
   }
-  .mute-btn:hover {
+  .mute-btn.hovering {
     transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.8);
   }
 </style>

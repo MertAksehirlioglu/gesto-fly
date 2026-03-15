@@ -126,7 +126,7 @@
 <template>
   <v-app>
     <v-main class="d-flex w-100 h-100 pa-0">
-      <MobileWarning />
+      <MobileWarning :cursor-pos="cursorPos" />
       <!-- Camera Input (Background Layer) -->
       <div class="camera-layer">
         <CameraInput

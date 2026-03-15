@@ -20,10 +20,18 @@
   const btnLeaderboard = ref<HTMLElement | null>(null)
   const btnRecalibrate = ref<HTMLElement | null>(null)
 
-  const competitiveDwell = useGestureDwell({ onComplete: () => emit('start-competitive') })
-  const practiceDwell = useGestureDwell({ onComplete: () => emit('start-practice') })
-  const leaderboardDwell = useGestureDwell({ onComplete: () => emit('show-leaderboard') })
-  const recalibrateDwell = useGestureDwell({ onComplete: () => emit('recalibrate') })
+  const competitiveDwell = useGestureDwell({
+    onComplete: () => emit('start-competitive'),
+  })
+  const practiceDwell = useGestureDwell({
+    onComplete: () => emit('start-practice'),
+  })
+  const leaderboardDwell = useGestureDwell({
+    onComplete: () => emit('show-leaderboard'),
+  })
+  const recalibrateDwell = useGestureDwell({
+    onComplete: () => emit('recalibrate'),
+  })
 
   watch(
     () => props.cursorPos,
@@ -43,7 +51,8 @@
     for (const btn of buttons) {
       if (btn.el) {
         const rect = btn.el.getBoundingClientRect()
-        const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        const isHover =
+          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
         if (isHover) {
           btn.dwell.startDwell()
         } else {

@@ -16,7 +16,9 @@
   const btnPlayAgain = ref<HTMLElement | null>(null)
   const btnMenu = ref<HTMLElement | null>(null)
 
-  const playAgainDwell = useGestureDwell({ onComplete: () => emit('play-again') })
+  const playAgainDwell = useGestureDwell({
+    onComplete: () => emit('play-again'),
+  })
   const menuDwell = useGestureDwell({ onComplete: () => emit('menu') })
 
   watch(
@@ -35,7 +37,8 @@
     for (const btn of buttons) {
       if (btn.el) {
         const rect = btn.el.getBoundingClientRect()
-        const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        const isHover =
+          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
         if (isHover) {
           btn.dwell.startDwell()
         } else {

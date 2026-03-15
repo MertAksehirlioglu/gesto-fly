@@ -66,7 +66,10 @@ export class GameWorld {
   spawnBall() {
     // Spawn ball slightly right of the far-left edge so it sits closer to
     // where the player's hand naturally rests (~28% from left).
-    this.activeBall = new Basketball(Math.round(this.width * 0.28), this.height - 400)
+    this.activeBall = new Basketball(
+      Math.round(this.width * 0.28),
+      this.height - 400,
+    )
     this.addBody(this.activeBall.getBody())
   }
 
@@ -185,8 +188,6 @@ export class GameWorld {
     }
   }
 
-
-
   start() {
     Matter.Render.run(this.render)
     Matter.Runner.run(this.runner, this.engine)
@@ -223,7 +224,8 @@ export class GameWorld {
         // Rim / backboard hit — trigger audio clank
         const labels = [bodyA.label, bodyB.label]
         const hasBall = labels.includes('Basketball')
-        const hasRimOrBoard = labels.includes('rim') || labels.includes('backboard')
+        const hasRimOrBoard =
+          labels.includes('rim') || labels.includes('backboard')
         if (hasBall && hasRimOrBoard && this.onRimHit) {
           this.onRimHit()
         }
@@ -254,7 +256,8 @@ export class GameWorld {
         ctx.beginPath()
         ctx.moveTo(0, lineY)
         ctx.lineTo(this.width, lineY)
-        ctx.strokeStyle = gi % 2 === 0 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.06)'
+        ctx.strokeStyle =
+          gi % 2 === 0 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.06)'
         ctx.lineWidth = 1
         ctx.stroke()
       }
@@ -306,7 +309,15 @@ export class GameWorld {
 
         ctx.save()
         ctx.beginPath()
-        ctx.ellipse(ballPos.x, floorY - 4, 20 * shadowScaleX, 5, 0, 0, Math.PI * 2)
+        ctx.ellipse(
+          ballPos.x,
+          floorY - 4,
+          20 * shadowScaleX,
+          5,
+          0,
+          0,
+          Math.PI * 2,
+        )
         ctx.fillStyle = 'rgba(0,0,0,' + shadowAlpha.toFixed(3) + ')'
         ctx.fill()
         ctx.restore()
