@@ -127,5 +127,20 @@ export function useGameAudio() {
     muted.value = !muted.value
   }
 
-  return { muted, toggleMute, playSwish, playRimClank, playCrowdCheer }
+  /** Close the shared AudioContext and release resources (call on app teardown). */
+  const closeAudio = () => {
+    if (audioCtx) {
+      audioCtx.close().catch(() => undefined)
+      audioCtx = null
+    }
+  }
+
+  return {
+    muted,
+    toggleMute,
+    playSwish,
+    playRimClank,
+    playCrowdCheer,
+    closeAudio,
+  }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { onMounted, ref } from 'vue'
+  import { onMounted, onUnmounted, ref } from 'vue'
 
   const isMobile = ref(false)
   const dismissed = ref(false)
@@ -26,6 +26,10 @@
     checkMobile()
     window.addEventListener('resize', checkMobile)
   })
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', checkMobile)
+  })
 </script>
 
 <template>
@@ -34,8 +38,8 @@
       <div class="icon">🖥️</div>
       <h1>Desktop Required</h1>
       <p>
-        This game is designed for a large screen and requires a webcam for gesture
-        controls.
+        This game is designed for a large screen and requires a webcam for
+        gesture controls.
       </p>
       <p class="sub">
         For the best experience, please play on a laptop or desktop computer.

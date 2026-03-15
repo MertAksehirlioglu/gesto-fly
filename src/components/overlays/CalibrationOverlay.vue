@@ -114,7 +114,13 @@
           <v-chip
             v-for="(s, i) in ['open', 'pinch', 'done']"
             :key="s"
-            :color="step === s ? 'orange' : step === 'done' || (step === 'pinch' && i === 0) ? 'grey' : 'grey-darken-3'"
+            :color="
+              step === s
+                ? 'orange'
+                : step === 'done' || (step === 'pinch' && i === 0)
+                  ? 'grey'
+                  : 'grey-darken-3'
+            "
             class="mx-1"
             size="small"
           >
@@ -170,7 +176,8 @@
         <template v-else>
           <div class="mb-6">
             <v-chip color="orange" variant="tonal" size="large">
-              Threshold: {{ (recordedMin + (recordedMax - recordedMin) * 0.3).toFixed(4) }}
+              Threshold:
+              {{ (recordedMin + (recordedMax - recordedMin) * 0.3).toFixed(4) }}
             </v-chip>
           </div>
           <v-btn

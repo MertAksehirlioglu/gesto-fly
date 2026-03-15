@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref, computed, watch } from 'vue'
+  import { ref, computed, watch, nextTick } from 'vue'
   import GameCanvas from './components/GameCanvas.vue'
   import CameraInput from './components/CameraInput.vue'
   import TeamSelector from './components/TeamSelector.vue'
@@ -111,15 +111,17 @@
     return names[currentTeam.value] || currentTeam.value
   })
 
-  // watch for initial load
+  // watch for initial load — use { flush: 'post' } so the child's onMounted
+  // (which sets up gameWorld) has run before we try to apply colours
   watch(
     () => gameCanvasRef.value,
     (newVal) => {
       if (newVal) {
-        setTimeout(updateGameColors, 100)
+        // nextTick ensures GameCanvas onMounted + inner nextTick have completed
+        void nextTick().then(() => updateGameColors())
       }
     },
-    { immediate: true },
+    { immediate: true, flush: 'post' },
   )
 </script>
 

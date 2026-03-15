@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch, onMounted } from 'vue'
+  import { ref, watch } from 'vue'
 
   const props = defineProps<{
     cursorX: number
@@ -100,24 +100,6 @@
   const setTeamRef = (el: unknown, id: string) => {
     if (el) teamRefs.value[id] = el as HTMLElement
   }
-
-  // Dummy usage to satisfy aggressive linter overlap
-  onMounted(() => {
-    console.log('TeamSelector mounted', setTeamRef)
-  })
-
-  // Make setTeamRef available to template (it is by default in script setup, but linter complained?)
-  // Linter complained because it didn't see it used in template?
-  // Ah, the template edit failed previously? No, I see it in file view.
-  // Wait, I see :ref="(el) => setTeamRef(el, team.id)" in the file view.
-  // The linter error says 'setTeamRef' is declared but never read.
-  // This is a known issue with vue-tsc sometimes if unused, but here it IS used in template.
-  // Maybe I need to explicitly define it or ignore it?
-  // Let's ensure the template actually HAS the ref usage.
-  // Looking at file content Step 719:
-  // It does NOT have the ref usage! The replace failed or I missed it.
-  // Ah, I see Step 722 replaced the template but it might have been reverted or I'm misreading.
-  // Let's re-apply the template change properly.
 
   const selectedTeam = ref(teams[0].id)
   const emit = defineEmits<{

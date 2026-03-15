@@ -26,6 +26,7 @@ export class Basketball {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const radius = (this.body as any).circleRadius || 20
 
+    ctx.save()
     ctx.translate(position.x, position.y)
     ctx.rotate(angle)
 
@@ -65,7 +66,6 @@ export class Basketball {
     ctx.ellipse(0, 0, radius * 0.6, radius, 0, 0, Math.PI * 2)
     ctx.stroke()
 
-    ctx.rotate(-angle)
-    ctx.translate(-position.x, -position.y)
+    ctx.restore()
   }
 }

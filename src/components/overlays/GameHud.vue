@@ -30,7 +30,8 @@
   const checkButtons = (x: number, y: number) => {
     if (!btnExit.value) return
     const rect = btnExit.value.getBoundingClientRect()
-    const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+    const isHover =
+      x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
     if (isHover) {
       exitDwell.startDwell()
     } else {
@@ -43,7 +44,9 @@
   <div class="hud">
     <div class="score-board">
       <div class="label">SCORE</div>
-      <div class="value" :class="{ 'score-bounce': celebrating }">{{ score }}</div>
+      <div class="value" :class="{ 'score-bounce': celebrating }">
+        {{ score }}
+      </div>
     </div>
 
     <div
@@ -68,7 +71,11 @@
       ></div>
     </button>
 
-    <button class="mute-btn" @click="toggleMute" :title="muted ? 'Unmute' : 'Mute'">
+    <button
+      class="mute-btn"
+      :title="muted ? 'Unmute' : 'Mute'"
+      @click="toggleMute"
+    >
       {{ muted ? '🔇' : '🔊' }}
     </button>
   </div>
@@ -116,14 +123,22 @@
   /* [Feature] Score bounce animation on basket */
   .value.score-bounce {
     animation: scorePop 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-    color: #FFD700;
+    color: #ffd700;
   }
 
   @keyframes scorePop {
-    0%   { transform: scale(1); }
-    40%  { transform: scale(1.6); }
-    70%  { transform: scale(0.9); }
-    100% { transform: scale(1); }
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.6);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   .exit-btn {
