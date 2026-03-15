@@ -41,7 +41,11 @@ const finalize = (min: number, max: number) => {
   minPinch.value = min
   maxPinch.value = max
   isCalibrated.value = true
-  const data: CalibrationData = { min, max, throwMultiplier: throwMultiplier.value }
+  const data: CalibrationData = {
+    min,
+    max,
+    throwMultiplier: throwMultiplier.value,
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
