@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { ref, watch } from 'vue'
+  import { useGestureDwell } from '../../composables/useGestureDwell'
 
   const props = defineProps<{
     cursorPos: { x: number; y: number }
@@ -12,13 +13,7 @@
 
   const btnBack = ref<HTMLElement | null>(null)
 
-  const hoverState = ref({
-    target: null as string | null,
-    startTime: 0,
-    progress: 0,
-  })
-
-  let animationFrame: number | null = null
+  const backDwell = useGestureDwell({ onComplete: () => emit('back') })
 
   watch(
     () => props.cursorPos,
@@ -29,46 +24,12 @@
 
   const checkButtons = (x: number, y: number) => {
     if (!btnBack.value) return
-
     const rect = btnBack.value.getBoundingClientRect()
-    const isHover =
-      x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
-
+    const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
     if (isHover) {
-      if (hoverState.value.target !== 'BACK') {
-        hoverState.value.target = 'BACK'
-        hoverState.value.startTime = performance.now()
-        hoverState.value.progress = 0
-        if (!animationFrame) loopHover()
-      }
+      backDwell.startDwell()
     } else {
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-        animationFrame = null
-      }
-    }
-  }
-
-  const loopHover = () => {
-    if (!hoverState.value.target) {
-      animationFrame = null
-      return
-    }
-
-    const elapsed = performance.now() - hoverState.value.startTime
-    const duration = 1500
-
-    hoverState.value.progress = Math.min((elapsed / duration) * 100, 100)
-
-    if (elapsed >= duration) {
-      emit('back')
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      animationFrame = null
-    } else {
-      animationFrame = requestAnimationFrame(loopHover)
+      backDwell.cancelDwell()
     }
   }
 </script>
@@ -90,14 +51,14 @@
       <button
         ref="btnBack"
         class="menu-btn back-btn"
-        :class="{ hovering: hoverState.target === 'BACK' }"
+        :class="{ hovering: backDwell.isActive.value }"
         @click="emit('back')"
       >
         BACK
         <div
-          v-if="hoverState.target === 'BACK'"
+          v-if="backDwell.isActive.value"
           class="btn-progress"
-          :style="{ width: hoverState.progress + '%' }"
+          :style="{ width: backDwell.progress.value + '%' }"
         ></div>
       </button>
     </div>

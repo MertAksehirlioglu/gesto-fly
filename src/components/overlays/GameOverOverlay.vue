@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { ref, watch } from 'vue'
+  import { useGestureDwell } from '../../composables/useGestureDwell'
 
   const props = defineProps<{
     cursorPos: { x: number; y: number }
@@ -15,13 +16,8 @@
   const btnPlayAgain = ref<HTMLElement | null>(null)
   const btnMenu = ref<HTMLElement | null>(null)
 
-  const hoverState = ref({
-    target: null as string | null,
-    startTime: 0,
-    progress: 0,
-  })
-
-  let animationFrame: number | null = null
+  const playAgainDwell = useGestureDwell({ onComplete: () => emit('play-again') })
+  const menuDwell = useGestureDwell({ onComplete: () => emit('menu') })
 
   watch(
     () => props.cursorPos,
@@ -32,63 +28,20 @@
 
   const checkButtons = (x: number, y: number) => {
     const buttons = [
-      { id: 'PLAY_AGAIN', el: btnPlayAgain.value },
-      { id: 'MENU', el: btnMenu.value },
+      { el: btnPlayAgain.value, dwell: playAgainDwell },
+      { el: btnMenu.value, dwell: menuDwell },
     ]
 
-    let found = null
     for (const btn of buttons) {
       if (btn.el) {
         const rect = btn.el.getBoundingClientRect()
-        if (
-          x >= rect.left &&
-          x <= rect.right &&
-          y >= rect.top &&
-          y <= rect.bottom
-        ) {
-          found = btn.id
-          break
+        const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        if (isHover) {
+          btn.dwell.startDwell()
+        } else {
+          btn.dwell.cancelDwell()
         }
       }
-    }
-
-    if (found) {
-      if (hoverState.value.target !== found) {
-        hoverState.value.target = found
-        hoverState.value.startTime = performance.now()
-        hoverState.value.progress = 0
-        if (!animationFrame) loopHover()
-      }
-    } else {
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-        animationFrame = null
-      }
-    }
-  }
-
-  const loopHover = () => {
-    if (!hoverState.value.target) {
-      animationFrame = null
-      return
-    }
-
-    const elapsed = performance.now() - hoverState.value.startTime
-    const duration = 1500
-
-    hoverState.value.progress = Math.min((elapsed / duration) * 100, 100)
-
-    if (elapsed >= duration) {
-      if (hoverState.value.target === 'PLAY_AGAIN') emit('play-again')
-      else if (hoverState.value.target === 'MENU') emit('menu')
-
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      animationFrame = null
-    } else {
-      animationFrame = requestAnimationFrame(loopHover)
     }
   }
 </script>
@@ -109,27 +62,27 @@
         <button
           ref="btnPlayAgain"
           class="menu-btn primary"
-          :class="{ hovering: hoverState.target === 'PLAY_AGAIN' }"
+          :class="{ hovering: playAgainDwell.isActive.value }"
           @click="emit('play-again')"
         >
           PLAY AGAIN
           <div
-            v-if="hoverState.target === 'PLAY_AGAIN'"
+            v-if="playAgainDwell.isActive.value"
             class="btn-progress"
-            :style="{ width: hoverState.progress + '%' }"
+            :style="{ width: playAgainDwell.progress.value + '%' }"
           ></div>
         </button>
         <button
           ref="btnMenu"
           class="menu-btn secondary"
-          :class="{ hovering: hoverState.target === 'MENU' }"
+          :class="{ hovering: menuDwell.isActive.value }"
           @click="emit('menu')"
         >
           MENU
           <div
-            v-if="hoverState.target === 'MENU'"
+            v-if="menuDwell.isActive.value"
             class="btn-progress"
-            :style="{ width: hoverState.progress + '%' }"
+            :style="{ width: menuDwell.progress.value + '%' }"
           ></div>
         </button>
       </div>

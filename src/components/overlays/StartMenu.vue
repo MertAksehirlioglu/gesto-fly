@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { ref, watch } from 'vue'
+  import { useGestureDwell } from '../../composables/useGestureDwell'
 
   const props = defineProps<{
     cursorPos: { x: number; y: number }
@@ -19,13 +20,10 @@
   const btnLeaderboard = ref<HTMLElement | null>(null)
   const btnRecalibrate = ref<HTMLElement | null>(null)
 
-  const hoverState = ref({
-    target: null as string | null,
-    startTime: 0,
-    progress: 0,
-  })
-
-  let animationFrame: number | null = null
+  const competitiveDwell = useGestureDwell({ onComplete: () => emit('start-competitive') })
+  const practiceDwell = useGestureDwell({ onComplete: () => emit('start-practice') })
+  const leaderboardDwell = useGestureDwell({ onComplete: () => emit('show-leaderboard') })
+  const recalibrateDwell = useGestureDwell({ onComplete: () => emit('recalibrate') })
 
   watch(
     () => props.cursorPos,
@@ -36,71 +34,23 @@
 
   const checkButtons = (x: number, y: number) => {
     const buttons = [
-      { id: 'COMPETITIVE', el: btnCompetitive.value },
-      { id: 'PRACTICE', el: btnPractice.value },
-      { id: 'LEADERBOARD', el: btnLeaderboard.value },
-      { id: 'RECALIBRATE', el: btnRecalibrate.value },
+      { el: btnCompetitive.value, dwell: competitiveDwell },
+      { el: btnPractice.value, dwell: practiceDwell },
+      { el: btnLeaderboard.value, dwell: leaderboardDwell },
+      { el: btnRecalibrate.value, dwell: recalibrateDwell },
     ]
 
-    let found = null
     for (const btn of buttons) {
       if (btn.el) {
         const rect = btn.el.getBoundingClientRect()
-        if (
-          x >= rect.left &&
-          x <= rect.right &&
-          y >= rect.top &&
-          y <= rect.bottom
-        ) {
-          found = btn.id
-          break
+        const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+        if (isHover) {
+          btn.dwell.startDwell()
+        } else {
+          btn.dwell.cancelDwell()
         }
       }
     }
-
-    if (found) {
-      if (hoverState.value.target !== found) {
-        hoverState.value.target = found
-        hoverState.value.startTime = performance.now()
-        hoverState.value.progress = 0
-        if (!animationFrame) loopHover()
-      }
-    } else {
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-        animationFrame = null
-      }
-    }
-  }
-
-  const loopHover = () => {
-    if (!hoverState.value.target) {
-      animationFrame = null
-      return
-    }
-
-    const elapsed = performance.now() - hoverState.value.startTime
-    const duration = 1500 // 1.5 seconds
-
-    hoverState.value.progress = Math.min((elapsed / duration) * 100, 100)
-
-    if (elapsed >= duration) {
-      triggerAction(hoverState.value.target)
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      animationFrame = null
-    } else {
-      animationFrame = requestAnimationFrame(loopHover)
-    }
-  }
-
-  const triggerAction = (action: string) => {
-    if (action === 'COMPETITIVE') emit('start-competitive')
-    else if (action === 'PRACTICE') emit('start-practice')
-    else if (action === 'LEADERBOARD') emit('show-leaderboard')
-    else if (action === 'RECALIBRATE') emit('recalibrate')
   }
 </script>
 
@@ -114,15 +64,15 @@
         <button
           ref="btnCompetitive"
           class="menu-btn primary"
-          :class="{ hovering: hoverState.target === 'COMPETITIVE' }"
+          :class="{ hovering: competitiveDwell.isActive.value }"
           @click="emit('start-competitive')"
         >
           <span class="btn-title">COMPETITIVE</span>
           <span class="btn-sub">30s Timer • Ranked</span>
           <div
-            v-if="hoverState.target === 'COMPETITIVE'"
+            v-if="competitiveDwell.isActive.value"
             class="btn-progress"
-            :style="{ width: hoverState.progress + '%' }"
+            :style="{ width: competitiveDwell.progress.value + '%' }"
           ></div>
         </button>
 
@@ -130,15 +80,15 @@
         <button
           ref="btnPractice"
           class="menu-btn secondary"
-          :class="{ hovering: hoverState.target === 'PRACTICE' }"
+          :class="{ hovering: practiceDwell.isActive.value }"
           @click="emit('start-practice')"
         >
           <span class="btn-title">PRACTICE</span>
           <span class="btn-sub">No Timer • Free Throw</span>
           <div
-            v-if="hoverState.target === 'PRACTICE'"
+            v-if="practiceDwell.isActive.value"
             class="btn-progress"
-            :style="{ width: hoverState.progress + '%' }"
+            :style="{ width: practiceDwell.progress.value + '%' }"
           ></div>
         </button>
 
@@ -146,14 +96,14 @@
         <button
           ref="btnLeaderboard"
           class="menu-btn tertiary"
-          :class="{ hovering: hoverState.target === 'LEADERBOARD' }"
+          :class="{ hovering: leaderboardDwell.isActive.value }"
           @click="emit('show-leaderboard')"
         >
           LEADERBOARD 🏆
           <div
-            v-if="hoverState.target === 'LEADERBOARD'"
+            v-if="leaderboardDwell.isActive.value"
             class="btn-progress"
-            :style="{ width: hoverState.progress + '%' }"
+            :style="{ width: leaderboardDwell.progress.value + '%' }"
           ></div>
         </button>
 
@@ -161,14 +111,14 @@
         <button
           ref="btnRecalibrate"
           class="menu-btn tertiary recalibrate"
-          :class="{ hovering: hoverState.target === 'RECALIBRATE' }"
+          :class="{ hovering: recalibrateDwell.isActive.value }"
           @click="emit('recalibrate')"
         >
           RECALIBRATE 🎯
           <div
-            v-if="hoverState.target === 'RECALIBRATE'"
+            v-if="recalibrateDwell.isActive.value"
             class="btn-progress"
-            :style="{ width: hoverState.progress + '%' }"
+            :style="{ width: recalibrateDwell.progress.value + '%' }"
           ></div>
         </button>
       </div>

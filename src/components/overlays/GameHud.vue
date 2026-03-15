@@ -1,5 +1,7 @@
 <script setup lang="ts">
   import { ref, watch } from 'vue'
+  import { useGestureDwell } from '../../composables/useGestureDwell'
+  import { useGameAudio } from '../../composables/useGameAudio'
 
   const props = defineProps<{
     cursorPos: { x: number; y: number }
@@ -15,13 +17,8 @@
 
   const btnExit = ref<HTMLElement | null>(null)
 
-  const hoverState = ref({
-    target: null as string | null,
-    startTime: 0,
-    progress: 0,
-  })
-
-  let animationFrame: number | null = null
+  const exitDwell = useGestureDwell({ onComplete: () => emit('exit') })
+  const { muted, toggleMute } = useGameAudio()
 
   watch(
     () => props.cursorPos,
@@ -32,46 +29,12 @@
 
   const checkButtons = (x: number, y: number) => {
     if (!btnExit.value) return
-
     const rect = btnExit.value.getBoundingClientRect()
-    const isHover =
-      x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
-
+    const isHover = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
     if (isHover) {
-      if (hoverState.value.target !== 'EXIT') {
-        hoverState.value.target = 'EXIT'
-        hoverState.value.startTime = performance.now()
-        hoverState.value.progress = 0
-        if (!animationFrame) loopHover()
-      }
+      exitDwell.startDwell()
     } else {
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-        animationFrame = null
-      }
-    }
-  }
-
-  const loopHover = () => {
-    if (!hoverState.value.target) {
-      animationFrame = null
-      return
-    }
-
-    const elapsed = performance.now() - hoverState.value.startTime
-    const duration = 1500
-
-    hoverState.value.progress = Math.min((elapsed / duration) * 100, 100)
-
-    if (elapsed >= duration) {
-      emit('exit')
-      hoverState.value.target = null
-      hoverState.value.progress = 0
-      animationFrame = null
-    } else {
-      animationFrame = requestAnimationFrame(loopHover)
+      exitDwell.cancelDwell()
     }
   }
 </script>
@@ -94,15 +57,19 @@
     <button
       ref="btnExit"
       class="exit-btn"
-      :class="{ hovering: hoverState.target === 'EXIT' }"
+      :class="{ hovering: exitDwell.isActive.value }"
       @click="emit('exit')"
     >
       EXIT
       <div
-        v-if="hoverState.target === 'EXIT'"
+        v-if="exitDwell.isActive.value"
         class="btn-progress"
-        :style="{ width: hoverState.progress + '%' }"
+        :style="{ width: exitDwell.progress.value + '%' }"
       ></div>
+    </button>
+
+    <button class="mute-btn" @click="toggleMute" :title="muted ? 'Unmute' : 'Mute'">
+      {{ muted ? '🔇' : '🔊' }}
     </button>
   </div>
 </template>
@@ -188,5 +155,21 @@
     height: 4px;
     background: #00ff00;
     transition: width 0.1s linear;
+  }
+
+  .mute-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    line-height: normal;
+    transition: transform 0.15s;
+  }
+  .mute-btn:hover {
+    transform: scale(1.1);
   }
 </style>
