@@ -1,6 +1,12 @@
 import Matter from 'matter-js'
+import mitt from 'mitt'
 import { Basketball } from './Basketball'
 import { Hoop } from './Hoop'
+
+type GameWorldEvents = {
+  score: void
+  rimHit: void
+}
 
 export class GameWorld {
   private element: HTMLElement
@@ -350,8 +356,8 @@ export class GameWorld {
     }
   }
 
-  // Score Callback
-  public onScore: (() => void) | null = null
+  // Typed event emitter
+  public emitter = mitt<GameWorldEvents>()
   private isResetting = false
 
   handleScore() {
@@ -360,8 +366,8 @@ export class GameWorld {
     console.log('SCORE!')
     this.isResetting = true
 
-    // onScore callback controls timing (celebration overlay + ball reset)
-    if (this.onScore) this.onScore()
+    // emitter controls timing (celebration overlay + ball reset)
+    this.emitter.emit('score')
   }
 
   // Called by the consumer after celebration ends to reset the ball

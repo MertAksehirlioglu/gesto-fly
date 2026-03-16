@@ -226,7 +226,7 @@
 
         gameWorld = new GameWorld(canvasRef.value)
         gameWorld.throwMultiplier = throwMultiplier.value
-        gameWorld.onScore = onScore
+        gameWorld.emitter.on('score', onScore)
         gameWorld.start()
         gameWorld.spawnBall()
         gameWorld.spawnHoop()
