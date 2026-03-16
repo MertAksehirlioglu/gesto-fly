@@ -73,11 +73,31 @@
   // --- Persistence ---
   const STORAGE_KEY_LEADERBOARD = 'gesto-fly-leaderboard'
 
+  const isValidEntry = (entry: unknown): entry is ScoreEntry => {
+    if (!entry || typeof entry !== 'object') return false
+    const e = entry as Record<string, unknown>
+    return (
+      Number.isInteger(e.score) &&
+      (e.score as number) >= 0 &&
+      (e.score as number) <= 9999 &&
+      typeof e.team === 'string' &&
+      (e.team as string).length <= 32 &&
+      (e.team as string).trim().length > 0
+    )
+  }
+
   const loadLeaderboard = () => {
     const saved = localStorage.getItem(STORAGE_KEY_LEADERBOARD)
     if (saved) {
       try {
-        leaderboard.value = JSON.parse(saved)
+        const parsed: unknown[] = JSON.parse(saved)
+        const valid = Array.isArray(parsed) ? parsed.filter(isValidEntry) : []
+        if (valid.length < (Array.isArray(parsed) ? parsed.length : 0)) {
+          console.warn(
+            `[Leaderboard] Filtered out ${(Array.isArray(parsed) ? parsed.length : 0) - valid.length} invalid entries from localStorage`,
+          )
+        }
+        leaderboard.value = valid
         // Sort just in case
         leaderboard.value.sort((a, b) => b.score - a.score)
         if (leaderboard.value.length > 0) {
