@@ -133,12 +133,13 @@ export class GameWorld {
       if (this.lastHandPos) {
         const dt = now - this.lastHandPos.time
         if (dt > 0) {
-          const vx = ((x - this.lastHandPos.x) / dt) * 16.67 // Scale to per-frame (Assuming 60fps)
-          const vy = ((y - this.lastHandPos.y) / dt) * 16.67
+          // Store raw velocity in px/ms — scaling to physics ticks happens at throw time
+          const vx = (x - this.lastHandPos.x) / dt
+          const vy = (y - this.lastHandPos.y) / dt
 
           this.velocityBuffer.push({ x: vx, y: vy, time: now })
 
-          // Keep buffer small (last ~10 frames / 160ms)
+          // Keep buffer small — cap at 10 samples (~100–200ms at typical frame rates)
           if (this.velocityBuffer.length > 10) {
             this.velocityBuffer.shift()
           }
@@ -180,14 +181,19 @@ export class GameWorld {
       // Apply Force Multiplier (configurable via setThrowMultiplier / calibration)
       const throwMultiplier = this.throwMultiplier
 
-      if (maxSpeed > 2) {
-        // Min threshold to consider it a throw
+      // Convert px/ms → px/physics-tick using the runner's actual delta.
+      // This replaces the old hardcoded 16.67ms (1000/60) assumption and
+      // correctly adapts to any refresh rate or runner configuration.
+      const tickDelta = this.runner.delta // ms per physics step (default ~16.67)
+
+      if (maxSpeed > 2 / tickDelta) {
+        // Min threshold scaled to px/ms (was 2 px/tick → 2/tickDelta px/ms)
         Matter.Body.setVelocity(body, {
-          x: throwVel.x * throwMultiplier,
-          y: throwVel.y * throwMultiplier,
+          x: throwVel.x * tickDelta * throwMultiplier,
+          y: throwVel.y * tickDelta * throwMultiplier,
         })
         // Add a bit of spin for fun based on x velocity
-        Matter.Body.setAngularVelocity(body, throwVel.x * 0.05)
+        Matter.Body.setAngularVelocity(body, throwVel.x * tickDelta * 0.05)
       }
 
       // Clear buffer
