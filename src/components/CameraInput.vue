@@ -158,6 +158,7 @@
       },
     ): void
     (e: 'pinchDistance', distance: number): void
+    (e: 'handDetected', detected: boolean): void
   }>()
 
   let isPinching = false
@@ -178,6 +179,7 @@
     if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     if (results.landmarks && results.landmarks.length > 0) {
+      emit('handDetected', true)
       const landmarks = results.landmarks[0]
 
       // Draw hand skeleton
@@ -281,6 +283,7 @@
         }
       }
     } else {
+      emit('handDetected', false)
       // Hand lost — reset smoothers so stale values don't bleed into next detection
       cursorX.reset()
       cursorY.reset()

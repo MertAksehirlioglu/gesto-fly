@@ -9,6 +9,7 @@
 
   const gameCanvasRef = ref<InstanceType<typeof GameCanvas> | null>(null)
   const currentTeam = ref('fenerbahce')
+  const handDetected = ref(false)
 
   // Calibration (singleton — shared with GameCanvas)
   const { pinchThreshold } = useCalibration()
@@ -135,6 +136,7 @@
           :pinch-threshold="pinchThreshold"
           @gesture="onGesture"
           @pinch-distance="onPinchDistance"
+          @hand-detected="(v) => (handDetected = v)"
         />
       </div>
 
@@ -152,7 +154,7 @@
       />
 
       <!-- Game Overlay (Physics) -->
-      <GameCanvas ref="gameCanvasRef" :current-team-name="currentTeamName" />
+      <GameCanvas ref="gameCanvasRef" :current-team-name="currentTeamName" :hand-detected="handDetected" />
     </v-main>
   </v-app>
 </template>
