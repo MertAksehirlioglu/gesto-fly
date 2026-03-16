@@ -12,6 +12,7 @@
 
   const props = defineProps<{
     currentTeamName: string
+    handDetected?: boolean
   }>()
 
   // --- Calibration ---
@@ -322,6 +323,14 @@
       @menu="backToMenu"
     />
 
+    <!-- [Feature] Hand-Lost Visual Indicator -->
+    <div
+      v-if="gameState === 'PLAYING' && !props.handDetected"
+      class="hand-lost-banner"
+    >
+      ✋ Hand not detected
+    </div>
+
     <!-- [Feature] Score Celebration Animation Overlay -->
     <Transition name="celebration">
       <div v-if="celebrating" class="celebration-overlay">
@@ -432,5 +441,27 @@
   .c4 { right: 28%; bottom: 25%; animation-delay: 0.15s; animation-duration: 1.5s; }
   .c5 { right: 12%; bottom: 30%; animation-delay: 0.08s; animation-duration: 1.2s; }
   .c6 { left: 65%;  bottom: 22%; animation-delay: 0.2s;  animation-duration: 1.35s; }
+
+  /* ── [Feature] Hand-Lost Visual Indicator ── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .hand-lost-banner {
+    animation: pulse 1.2s ease-in-out infinite;
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border-radius: 2rem;
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+  }
 </style>
 ```

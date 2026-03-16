@@ -53,6 +53,9 @@
     }
   })
 
+  // Hand detection state (from CameraInput via MediaPipe)
+  const handDetected = ref(false)
+
   // Basic cursor tracking logic for UI overlay
   const cursorPos = ref({ x: 0, y: 0 })
 
@@ -133,6 +136,7 @@
           :pinch-threshold="pinchThreshold"
           @gesture="onGesture"
           @pinch-distance="onPinchDistance"
+          @hand-detected="(v) => (handDetected = v)"
         />
       </div>
 
@@ -150,7 +154,7 @@
       />
 
       <!-- Game Overlay (Physics) -->
-      <GameCanvas ref="gameCanvasRef" :current-team-name="currentTeamName" />
+      <GameCanvas ref="gameCanvasRef" :current-team-name="currentTeamName" :hand-detected="handDetected" />
     </v-main>
   </v-app>
 </template>
