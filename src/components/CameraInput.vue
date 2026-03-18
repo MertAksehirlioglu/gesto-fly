@@ -5,29 +5,7 @@
     HandLandmarker,
     DrawingUtils,
   } from '@mediapipe/tasks-vision'
-
-  // ---------------------------------------------------------------------------
-  // Exponential Moving Average smoother
-  // alpha: 0 = no update (frozen), 1 = no smoothing (raw).
-  // 0.25–0.35 gives good cursor smoothness with minimal lag.
-  // ---------------------------------------------------------------------------
-  class EMA {
-    private alpha: number
-    private value: number | null = null
-    constructor(alpha = 0.3) {
-      this.alpha = alpha
-    }
-    update(raw: number): number {
-      this.value =
-        this.value === null
-          ? raw
-          : this.alpha * raw + (1 - this.alpha) * this.value
-      return this.value
-    }
-    reset() {
-      this.value = null
-    }
-  }
+  import { EMA } from '@/lib/ema'
 
   const cursorX = new EMA(0.3)
   const cursorY = new EMA(0.3)
@@ -158,10 +136,15 @@
       },
     ): void
     (e: 'pinchDistance', distance: number): void
+    (e: 'pinchStateChange', isPinching: boolean): void
   }>()
 
   let isPinching = false
   let releaseFrameCount = 0
+
+  // [Performance] Throttle HandLandmarker inference to 30 FPS
+  const INFERENCE_INTERVAL_MS = 1000 / 30
+  let lastInferenceTime = 0
 
   const predictWebcam = () => {
     if (!handLandmarker || !videoRef.value || !isCameraActive.value) return
@@ -170,6 +153,13 @@
     if (videoRef.value.readyState < 2) return
 
     const startTimeMs = performance.now()
+
+    // Skip frame if not enough time has elapsed (30fps cap)
+    if (startTimeMs - lastInferenceTime < INFERENCE_INTERVAL_MS) {
+      animationFrameId = requestAnimationFrame(predictWebcam)
+      return
+    }
+    lastInferenceTime = startTimeMs
     const results = handLandmarker.detectForVideo(videoRef.value, startTimeMs)
 
     // Clear canvas every frame
@@ -256,6 +246,7 @@
 
         if (!isPinching) {
           isPinching = true
+          emit('pinchStateChange', true)
           emit('gesture', { type: 'pinchStart', x: visualX, y: visualY })
         } else {
           emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
@@ -269,6 +260,7 @@
             if (releaseFrameCount >= 1) {
               isPinching = false
               releaseFrameCount = 0
+              emit('pinchStateChange', false)
               emit('gesture', { type: 'pinchEnd', x: visualX, y: visualY })
             } else {
               emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
@@ -291,6 +283,7 @@
       if (isPinching) {
         isPinching = false
         releaseFrameCount = 0
+        emit('pinchStateChange', false)
         emit('gesture', { type: 'pinchEnd', x: 0, y: 0 })
       }
 
