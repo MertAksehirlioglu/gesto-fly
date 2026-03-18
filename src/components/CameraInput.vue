@@ -5,7 +5,7 @@
     HandLandmarker,
     DrawingUtils,
   } from '@mediapipe/tasks-vision'
-  import { EMA } from '@/lib/ema'
+  import { EMA } from '../lib/ema'
 
   const cursorX = new EMA(0.3)
   const cursorY = new EMA(0.3)
