@@ -11,6 +11,7 @@
 
   const props = defineProps<{
     currentTeamName: string
+    handDetected?: boolean
   }>()
 
   // --- Audio ---
@@ -85,10 +86,12 @@
     if (!entry || typeof entry !== 'object') return false
     const e = entry as Record<string, unknown>
     return (
+      Number.isInteger(e.score) &&
+      (e.score as number) >= 0 &&
+      (e.score as number) <= 9999 &&
       typeof e.score === 'number' &&
-      Number.isFinite(e.score) &&
-      e.score >= 0 &&
       typeof e.team === 'string' &&
+      (e.team as string).trim().length > 0 &&
       e.team.length <= 100 &&
       typeof e.date === 'string'
     )
@@ -103,7 +106,11 @@
           leaderboard.value = []
           return
         }
-        leaderboard.value = parsed.filter(isValidScoreEntry)
+        const valid = parsed.filter(isValidScoreEntry)
+        if (valid.length < parsed.length) {
+          console.warn(`[Leaderboard] Filtered out ${parsed.length - valid.length} invalid entries from localStorage`)
+        }
+        leaderboard.value = valid
         // Sort just in case
         leaderboard.value.sort((a, b) => b.score - a.score)
         if (leaderboard.value.length > 0) {
@@ -254,8 +261,8 @@
 
         gameWorld = new GameWorld(canvasRef.value)
         gameWorld.throwMultiplier = throwMultiplier.value
-        gameWorld.onScore = onScore
-        gameWorld.onRimHit = playRimClank
+        gameWorld.emitter.on('score', onScore)
+        gameWorld.emitter.on('rimHit', playRimClank)
         gameWorld.start()
         gameWorld.spawnBall()
         gameWorld.spawnHoop()
@@ -352,6 +359,14 @@
       @play-again="startGame('COMPETITIVE')"
       @menu="backToMenu"
     />
+
+    <!-- [Feature] Hand-Lost Visual Indicator -->
+    <div
+      v-if="gameState === 'PLAYING' && !props.handDetected"
+      class="hand-lost-banner"
+    >
+      ✋ Hand not detected
+    </div>
 
     <!-- [Feature] Score Celebration Animation Overlay -->
     <Transition name="celebration">
@@ -520,5 +535,27 @@
     bottom: 22%;
     animation-delay: 0.2s;
     animation-duration: 1.35s;
+  }
+
+  /* ── Hand-Lost Visual Indicator ── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .hand-lost-banner {
+    animation: pulse 1.2s ease-in-out infinite;
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border-radius: 2rem;
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
   }
 </style>
