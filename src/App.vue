@@ -18,6 +18,10 @@
     gameCanvasRef.value?.handlePinchDistance(distance)
   }
 
+  const onPinchStateChange = (isPinching: boolean) => {
+    gameCanvasRef.value?.handlePinchStateChange(isPinching)
+  }
+
   // Use Composable for consistent coord math
   const { transform } = useScreenCoordinates(4 / 3) // 4:3 is standard webcam ratio
 
@@ -136,6 +140,7 @@
           :pinch-threshold="pinchThreshold"
           @gesture="onGesture"
           @pinch-distance="onPinchDistance"
+          @pinch-state-change="onPinchStateChange"
           @hand-detected="(v) => (handDetected = v)"
         />
       </div>

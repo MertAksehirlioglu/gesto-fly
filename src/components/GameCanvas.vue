@@ -229,6 +229,7 @@
   // as gesture menus are complex. Or use cursor hover like TeamSelector.
   // Emulating "Hover" for menu buttons is good for consistency.
   const cursorP = ref({ x: 0, y: 0 })
+  const isCursorPinching = ref(false)
 
   // Hover state is now managed inside child components! We only pass position.
 
@@ -291,9 +292,50 @@
     }
   }
 
+  // [Feature] Mouse fallback — emulate gesture events via mouse drag
+  let isMouseDown = false
+
+  const getCanvasCoords = (e: MouseEvent) => {
+    const canvas = canvasRef.value
+    if (!canvas) return { x: e.clientX, y: e.clientY }
+    const rect = canvas.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+
+  const handleMouseDown = (e: MouseEvent) => {
+    if (gameState.value !== 'PLAYING') return
+    isMouseDown = true
+    isCursorPinching.value = true
+    const { x, y } = getCanvasCoords(e)
+    cursorP.value = { x, y }
+    gameWorld?.startGrab(x, y)
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    const { x, y } = getCanvasCoords(e)
+    cursorP.value = { x, y }
+    if (isMouseDown && gameState.value === 'PLAYING') {
+      gameWorld?.moveGrab(x, y)
+    }
+  }
+
+  const handleMouseUp = (e: MouseEvent) => {
+    if (!isMouseDown) return
+    isMouseDown = false
+    isCursorPinching.value = false
+    const { x, y } = getCanvasCoords(e)
+    gameWorld?.endGrab()
+    playSwish()
+  }
+
+  const handlePinchStateChange = (pinching: boolean) => {
+    isCursorPinching.value = pinching
+  }
+
   defineExpose({
     handleGesture,
     handlePinchDistance,
+    handlePinchStateChange,
     pinchThreshold,
     getGameWorld: () => gameWorld,
     highScore,
@@ -301,16 +343,22 @@
 </script>
 
 <template>
-  <div class="game-container">
+  <div
+    class="game-container"
+    @mousedown="handleMouseDown"
+    @mousemove="handleMouseMove"
+    @mouseup="handleMouseUp"
+    @mouseleave="handleMouseUp"
+  >
     <canvas ref="canvasRef" class="game-canvas"></canvas>
 
-    <!-- Visual Cursor for Debug/Feedback -->
+    <!-- Visual Cursor — orange + larger when pinching -->
     <div
       class="visual-cursor"
+      :class="{ pinching: isCursorPinching }"
       :style="{
         left: cursorP.x + 'px',
         top: cursorP.y + 'px',
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
       }"
     ></div>
 
@@ -405,10 +453,18 @@
     height: 20px;
     border-radius: 50%;
     border: 2px solid white;
+    background-color: rgba(255, 255, 255, 0.5);
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 9999;
-    transition: background-color 0.2s;
+    transition: background-color 0.1s, transform 0.1s, border-color 0.1s, width 0.1s, height 0.1s;
+  }
+
+  .visual-cursor.pinching {
+    width: 30px;
+    height: 30px;
+    background-color: rgba(255, 140, 0, 0.7);
+    border-color: orange;
   }
 
   /* ── [Feature] Score Celebration Overlay ── */
