@@ -1,5 +1,6 @@
 import Matter from 'matter-js'
 import mitt from 'mitt'
+import { PHYSICS_CONFIG } from './physicsConfig'
 import { Basketball } from './Basketball'
 import { Hoop } from './Hoop'
 
@@ -27,7 +28,7 @@ export class GameWorld {
     this.height = window.innerHeight
 
     this.engine = Matter.Engine.create()
-    this.engine.gravity.y = 1.5
+    this.engine.gravity.y = PHYSICS_CONFIG.gravity
 
     this.render = Matter.Render.create({
       // element: this.element, // Don't use element if we want to use specific canvas
@@ -111,7 +112,7 @@ export class GameWorld {
     const distance = Matter.Vector.magnitude(
       Matter.Vector.sub(body.position, { x, y }),
     )
-    if (distance > 80) return // Ignore grab if too far
+    if (distance > PHYSICS_CONFIG.grab.maxDistance) return // Ignore grab if too far
 
     // Reset tracking
     this.velocityBuffer = []
@@ -122,8 +123,8 @@ export class GameWorld {
       pointA: { x, y }, // Hand position
       bodyB: body, // Ball
       pointB: { x: 0, y: 0 }, // Center of ball
-      stiffness: 0.2, // Springiness (0.1 - 0.5 is good for "soft" grab)
-      damping: 0.05,
+      stiffness: PHYSICS_CONFIG.grab.stiffness, // Springiness (0.1 - 0.5 is good for "soft" grab)
+      damping: PHYSICS_CONFIG.grab.damping,
       length: 0,
       render: { visible: true, strokeStyle: '#FFFFFF' },
     })
@@ -146,7 +147,7 @@ export class GameWorld {
           this.velocityBuffer.push({ x: vx, y: vy, time: now })
 
           // Keep buffer small — cap at 10 samples (~100–200ms at typical frame rates)
-          if (this.velocityBuffer.length > 10) {
+          if (this.velocityBuffer.length > PHYSICS_CONFIG.grab.velocityBufferSize) {
             this.velocityBuffer.shift()
           }
         }
@@ -192,7 +193,7 @@ export class GameWorld {
       // correctly adapts to any refresh rate or runner configuration.
       const tickDelta = this.runner.delta // ms per physics step (default ~16.67)
 
-      if (maxSpeed > 2 / tickDelta) {
+      if (maxSpeed > PHYSICS_CONFIG.grab.minThrowSpeedPxPerTick / tickDelta) {
         // Min threshold scaled to px/ms (was 2 px/tick → 2/tickDelta px/ms)
         Matter.Body.setVelocity(body, {
           x: throwVel.x * tickDelta * throwMultiplier,

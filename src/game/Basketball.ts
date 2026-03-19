@@ -1,14 +1,15 @@
 import Matter from 'matter-js'
+import { PHYSICS_CONFIG } from './physicsConfig'
 
 export class Basketball {
   private body: Matter.Body
 
-  constructor(x: number, y: number, radius: number = 20) {
+  constructor(x: number, y: number, radius: number = PHYSICS_CONFIG.ball.radius) {
     this.body = Matter.Bodies.circle(x, y, radius, {
-      restitution: 0.75,
-      friction: 0.3,
-      frictionAir: 0.02,
-      density: 0.04,
+      restitution: PHYSICS_CONFIG.ball.restitution,
+      friction: PHYSICS_CONFIG.ball.friction,
+      frictionAir: PHYSICS_CONFIG.ball.frictionAir,
+      density: PHYSICS_CONFIG.ball.density,
       render: {
         visible: false, // Hide default rendering to use custom draw
       },

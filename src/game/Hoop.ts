@@ -1,4 +1,5 @@
 import Matter from 'matter-js'
+import { PHYSICS_CONFIG } from './physicsConfig'
 
 export class Hoop {
   private composite: Matter.Composite
@@ -28,8 +29,8 @@ export class Hoop {
     // 2. Backboard — restitution for bank shots
     const backboard = Matter.Bodies.rectangle(x, y - 50, 10, 140, {
       isStatic: true,
-      restitution: 0.65,
-      friction: 0.1,
+      restitution: PHYSICS_CONFIG.hoop.backboardRestitution,
+      friction: PHYSICS_CONFIG.hoop.backboardFriction,
       render: {
         fillStyle: 'rgba(255, 255, 255, 0.0)',
         strokeStyle: '#333',
@@ -40,7 +41,7 @@ export class Hoop {
 
     // 3. Rim
     const rimY = y + 20
-    const rimWidth = 80
+    const rimWidth = PHYSICS_CONFIG.hoop.rimWidth
 
     // Rim neck bracket
     const rimNeck = Matter.Bodies.rectangle(x - 5, rimY + 2, 10, 8, {
@@ -62,22 +63,22 @@ export class Hoop {
     this.rimLeft = Matter.Bodies.rectangle(x - rimWidth, rimY, 12, 6, {
       isStatic: true,
       label: 'rim',
-      restitution: 0.4,
-      friction: 0.3,
+      restitution: PHYSICS_CONFIG.hoop.rimRestitution,
+      friction: PHYSICS_CONFIG.hoop.rimFriction,
       render: { fillStyle: '#e74c3c' },
     })
     this.rimRight = Matter.Bodies.rectangle(x - 5, rimY, 12, 6, {
       isStatic: true,
       label: 'rim',
-      restitution: 0.4,
-      friction: 0.3,
+      restitution: PHYSICS_CONFIG.hoop.rimRestitution,
+      friction: PHYSICS_CONFIG.hoop.rimFriction,
       render: { fillStyle: '#e74c3c' },
     })
 
     // 4. Net (physics only — rendered visually in GameWorld)
     const netGroup = Matter.Body.nextGroup(true)
-    const netSegments = 5
-    const netLength = 15
+    const netSegments = PHYSICS_CONFIG.hoop.netSegments
+    const netLength = PHYSICS_CONFIG.hoop.netLength
 
     const startX = x - rimWidth
     const endX = x - 5
@@ -103,7 +104,7 @@ export class Hoop {
           netLength,
           {
             collisionFilter: { group: netGroup },
-            frictionAir: 0.1,
+            frictionAir: PHYSICS_CONFIG.hoop.netFrictionAir,
             render: { fillStyle: 'rgba(255,255,255,0.85)' },
           },
         )
@@ -114,7 +115,7 @@ export class Hoop {
       Matter.Composite.add(strand, strandBodies)
 
       Matter.Composites.chain(strand, 0, 0.5, 0, -0.5, {
-        stiffness: 0.8,
+        stiffness: PHYSICS_CONFIG.hoop.netChainStiffness,
         length: 0,
         render: { visible: false },
       })
@@ -124,7 +125,7 @@ export class Hoop {
         pointA: anchorPt,
         bodyB: strandBodies[0],
         pointB: { x: 0, y: -netLength / 2 },
-        stiffness: 0.9,
+        stiffness: PHYSICS_CONFIG.hoop.netAnchorStiffness,
         length: 0,
       })
 
@@ -142,7 +143,7 @@ export class Hoop {
         const link = Matter.Constraint.create({
           bodyA: currentStrand[j],
           bodyB: nextStrand[j],
-          stiffness: 0.5,
+          stiffness: PHYSICS_CONFIG.hoop.netHorizontalLinkStiffness,
           render: {
             visible: true,
             type: 'line',

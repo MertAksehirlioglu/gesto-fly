@@ -1,0 +1,31 @@
+export const PHYSICS_CONFIG = {
+  gravity: 1.5,
+  ball: {
+    radius: 20,
+    restitution: 0.75,
+    friction: 0.3,
+    frictionAir: 0.02,
+    density: 0.04,
+  },
+  grab: {
+    maxDistance: 80,
+    stiffness: 0.2,
+    damping: 0.05,
+    velocityBufferSize: 10,
+    minThrowSpeedPxPerTick: 2,
+  },
+  hoop: {
+    backboardRestitution: 0.65,
+    backboardFriction: 0.1,
+    rimRestitution: 0.4,
+    rimFriction: 0.3,
+    rimWidth: 80,
+    netSegments: 5,
+    netLength: 15,
+    netStrandCount: 3,
+    netChainStiffness: 0.8,
+    netAnchorStiffness: 0.9,
+    netHorizontalLinkStiffness: 0.5,
+    netFrictionAir: 0.1,
+  },
+} as const
