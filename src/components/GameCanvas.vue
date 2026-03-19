@@ -45,7 +45,9 @@
 
   // --- State ---
   const canvasRef = ref<HTMLCanvasElement | null>(null)
+  const containerRef = ref<HTMLElement | null>(null)
   let gameWorld: GameWorld | null = null
+  let resizeObserver: ResizeObserver | null = null
 
   // Game States
   type GameState =
@@ -280,7 +282,21 @@
       }
     })
 
-    window.addEventListener('resize', onResize)
+    if (containerRef.value) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect
+          if (canvasRef.value) {
+            canvasRef.value.width = width
+            canvasRef.value.height = height
+          }
+          if (gameWorld) {
+            gameWorld.resize(width, height)
+          }
+        }
+      })
+      resizeObserver.observe(containerRef.value)
+    }
   })
 
   onUnmounted(() => {
@@ -288,7 +304,9 @@
     if (gameWorld) {
       gameWorld.stop()
     }
-    window.removeEventListener('resize', onResize)
+    if (resizeObserver) {
+      resizeObserver.disconnect()
+    }
     closeAudio()
   })
 
@@ -352,6 +370,7 @@
 
 <template>
   <div
+    ref="containerRef"
     class="game-container"
     @mousedown="handleMouseDown"
     @mousemove="handleMouseMove"
