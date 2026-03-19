@@ -5,6 +5,7 @@ import { Hoop } from './Hoop'
 
 type GameWorldEvents = {
   score: void
+  miss: void
   rimHit: void
 }
 
@@ -360,6 +361,7 @@ export class GameWorld {
       pos.x > this.width + margin
     ) {
       this.resetBall()
+      this.emitter.emit('miss')
     }
   }
 

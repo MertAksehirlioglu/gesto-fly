@@ -61,6 +61,7 @@
 
   // Game Data
   const score = ref(0)
+  const streak = ref(0)
   const timeLeft = ref(30) // Default 30s for Competitive
   const isInfinite = ref(false)
 
@@ -157,6 +158,7 @@
     gameMode.value = mode
     gameState.value = 'PLAYING'
     score.value = 0
+    streak.value = 0
 
     if (mode === 'COMPETITIVE') {
       timeLeft.value = 30
@@ -195,6 +197,7 @@
   const onScore = () => {
     if (gameState.value === 'PLAYING') {
       score.value++
+      streak.value++
       celebrating.value = true
       playCrowdCheer()
 
@@ -211,6 +214,10 @@
         gameWorld.completeScore()
       }
     }
+  }
+
+  const onMiss = () => {
+    streak.value = 0
   }
 
   const showLeaderboard = () => {
@@ -263,6 +270,7 @@
         gameWorld = new GameWorld(canvasRef.value)
         gameWorld.throwMultiplier = throwMultiplier.value
         gameWorld.emitter.on('score', onScore)
+        gameWorld.emitter.on('miss', onMiss)
         gameWorld.emitter.on('rimHit', playRimClank)
         gameWorld.start()
         gameWorld.spawnBall()
@@ -393,6 +401,7 @@
       v-if="gameState === 'PLAYING'"
       :cursor-pos="cursorP"
       :score="score"
+      :streak="streak"
       :time-left="timeLeft"
       :is-infinite="isInfinite"
       :celebrating="celebrating"
