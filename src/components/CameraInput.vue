@@ -6,6 +6,7 @@
     DrawingUtils,
   } from '@mediapipe/tasks-vision'
   import { EMA } from '../lib/ema'
+  import { verifyAssetIntegrity } from '../composables/verifyAssetIntegrity'
 
   const cursorX = new EMA(0.3)
   const cursorY = new EMA(0.3)
@@ -27,16 +28,37 @@
   // Keep a reference to the active stream for visibility-change cleanup
   let activeStream: MediaStream | null = null
 
+  // Pinned MediaPipe WASM package version (matches installed npm package).
+  // SRI hashes for version 0.10.22-rc.20250304 (cdn.jsdelivr.net):
+  //   vision_wasm_internal.js:        sha384-MMmkTwRjsrcocMM4i/voctUk/2bgv860D1e8/H8lZlWQwII8hBPhO8nZRfVDWErY
+  //   vision_wasm_internal.wasm:      sha384-5CHiizcG3SmHE9yb31ynp58+HxhuoCVp7RUsTP9sjbx28ItTh3QvnzETYPbiCp5U
+  //   vision_wasm_nosimd_internal.js:   sha384-g90rCTza6aOztJiHE5UTse0pbLcL9wWpcX94gyP0IEM2DfePVB1CJI55pN46T7m3
+  //   vision_wasm_nosimd_internal.wasm: sha384-1qQeFc/D4XWQsFU6rmN97e+8OfC4Axy5XXbwrsNciQEZ19mIKFn2Q5vqElEnE/BC
+  const MEDIAPIPE_WASM_URL =
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm'
+
+  // Model asset URL and its SRI hash (sha384, base64-encoded).
+  // Recompute with: openssl dgst -sha384 -binary hand_landmarker.task | base64 -w0
+  // SRI hash: sha384-uWvruVKd887ov8k43S+DBHCsi7UXXS+CKvvdM1PX00rjPzx/B0QrAPfJ1U9yKcze
+  const MODEL_URL =
+    'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+  const MODEL_SHA384 =
+    'sha384-uWvruVKd887ov8k43S+DBHCsi7UXXS+CKvvdM1PX00rjPzx/B0QrAPfJ1U9yKcze'
+
   const initHandLandmarker = async () => {
-    const vision = await FilesetResolver.forVisionTasks(
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm',
-    )
+    const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL)
+
+    // Fetch and verify the model file integrity before passing it to MediaPipe.
+    // verifyAssetIntegrity computes SHA-384 via Web Crypto API and throws if the
+    // digest does not match MODEL_SHA384, catching CDN tampering or version drift.
+    const modelBuffer = await verifyAssetIntegrity(MODEL_URL, MODEL_SHA384)
+    const modelAssetBuffer = new Uint8Array(modelBuffer)
 
     // [Performance] GPU Delegate Fallback for HandLandmarker
     try {
       handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+          modelAssetBuffer,
           delegate: 'GPU',
         },
         runningMode: 'VIDEO',
@@ -46,7 +68,7 @@
       console.warn('MediaPipe: GPU delegate failed, falling back to CPU')
       handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+          modelAssetBuffer,
           delegate: 'CPU',
         },
         runningMode: 'VIDEO',
