@@ -412,6 +412,9 @@ export class GameWorld {
   }
 
   resetBall() {
+    if (this.grabConstraint) {
+      this.endGrab()
+    }
     if (this.activeBall) {
       // Reset to start position (matches spawnBall)
       Matter.Body.setPosition(this.activeBall.getBody(), {
