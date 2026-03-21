@@ -223,16 +223,22 @@
 
   .streak-glow {
     color: #ffd700;
-    text-shadow: 0 0 10px rgba(255, 200, 0, 0.8), 0 0 20px rgba(255, 100, 0, 0.5);
+    text-shadow:
+      0 0 10px rgba(255, 200, 0, 0.8),
+      0 0 20px rgba(255, 100, 0, 0.5);
     animation: streakPulse 0.8s ease-in-out infinite alternate;
   }
 
   @keyframes streakPulse {
     from {
-      text-shadow: 0 0 10px rgba(255, 200, 0, 0.8), 0 0 20px rgba(255, 100, 0, 0.5);
+      text-shadow:
+        0 0 10px rgba(255, 200, 0, 0.8),
+        0 0 20px rgba(255, 100, 0, 0.5);
     }
     to {
-      text-shadow: 0 0 20px rgba(255, 200, 0, 1), 0 0 40px rgba(255, 100, 0, 0.9);
+      text-shadow:
+        0 0 20px rgba(255, 200, 0, 1),
+        0 0 40px rgba(255, 100, 0, 0.9);
     }
   }
 </style>

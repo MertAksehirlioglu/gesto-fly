@@ -27,7 +27,7 @@ The primary input method is the player's hand in front of the webcam — there i
 ```css
 .my-btn {
   position: relative; /* or absolute — either works */
-  overflow: hidden;   /* clips the progress bar */
+  overflow: hidden; /* clips the progress bar */
   transition: transform 0.2s;
 }
 .my-btn.hovering {

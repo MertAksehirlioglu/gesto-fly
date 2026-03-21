@@ -148,7 +148,9 @@ export class GameWorld {
           this.velocityBuffer.push({ x: vx, y: vy, time: now })
 
           // Keep buffer small — cap at 10 samples (~100–200ms at typical frame rates)
-          if (this.velocityBuffer.length > PHYSICS_CONFIG.grab.velocityBufferSize) {
+          if (
+            this.velocityBuffer.length > PHYSICS_CONFIG.grab.velocityBufferSize
+          ) {
             this.velocityBuffer.shift()
           }
         }

@@ -111,7 +111,9 @@
         }
         const valid = parsed.filter(isValidScoreEntry)
         if (valid.length < parsed.length) {
-          console.warn(`[Leaderboard] Filtered out ${parsed.length - valid.length} invalid entries from localStorage`)
+          console.warn(
+            `[Leaderboard] Filtered out ${parsed.length - valid.length} invalid entries from localStorage`,
+          )
         }
         leaderboard.value = valid
         // Sort just in case
@@ -337,7 +339,7 @@
     }
   }
 
-  const handleMouseUp = (_e: MouseEvent) => {
+  const handleMouseUp = () => {
     if (!isMouseDown) return
     isMouseDown = false
     isCursorPinching.value = false
@@ -476,7 +478,12 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 9999;
-    transition: background-color 0.1s, transform 0.1s, border-color 0.1s, width 0.1s, height 0.1s;
+    transition:
+      background-color 0.1s,
+      transform 0.1s,
+      border-color 0.1s,
+      width 0.1s,
+      height 0.1s;
   }
 
   .visual-cursor.pinching {
@@ -614,8 +621,13 @@
 
   /* ── Hand-Lost Visual Indicator ── */
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
   }
 
   .hand-lost-banner {
