@@ -10,7 +10,9 @@ import { ref } from 'vue'
  * component that calls useGameAudio() shares the same state.
  */
 
-const muted = ref(false)
+const MUTE_STORAGE_KEY = 'gesto-fly-muted'
+
+const muted = ref(localStorage.getItem(MUTE_STORAGE_KEY) === 'true')
 let audioCtx: AudioContext | null = null
 
 function getCtx(): AudioContext {
@@ -125,6 +127,7 @@ function playCrowdCheer() {
 export function useGameAudio() {
   const toggleMute = () => {
     muted.value = !muted.value
+    localStorage.setItem(MUTE_STORAGE_KEY, String(muted.value))
   }
 
   /** Close the shared AudioContext and release resources (call on app teardown). */
