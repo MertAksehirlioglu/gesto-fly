@@ -310,14 +310,6 @@
     closeAudio()
   })
 
-  const onResize = () => {
-    if (canvasRef.value && gameWorld) {
-      canvasRef.value.width = window.innerWidth
-      canvasRef.value.height = window.innerHeight
-      gameWorld.resize(window.innerWidth, window.innerHeight)
-    }
-  }
-
   // [Feature] Mouse fallback — emulate gesture events via mouse drag
   let isMouseDown = false
 
@@ -345,11 +337,10 @@
     }
   }
 
-  const handleMouseUp = (e: MouseEvent) => {
+  const handleMouseUp = (_e: MouseEvent) => {
     if (!isMouseDown) return
     isMouseDown = false
     isCursorPinching.value = false
-    const { x, y } = getCanvasCoords(e)
     gameWorld?.endGrab()
     playSwish()
   }
