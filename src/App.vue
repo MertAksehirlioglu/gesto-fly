@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick } from 'vue'
+  import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
   import GameCanvas from './components/GameCanvas.vue'
   import CameraInput from './components/CameraInput.vue'
   import TeamSelector from './components/TeamSelector.vue'
@@ -116,6 +116,43 @@
     return names[currentTeam.value] || currentTeam.value
   })
 
+  // [Feature] PWA Install Prompt
+  // Capture the browser's beforeinstallprompt event so we can surface it on demand.
+  let deferredInstallPrompt: BeforeInstallPromptEvent | null = null
+  const showInstallBanner = ref(false)
+
+  const handleBeforeInstallPrompt = (e: Event) => {
+    e.preventDefault()
+    deferredInstallPrompt = e as BeforeInstallPromptEvent
+    showInstallBanner.value = true
+  }
+
+  const installApp = async () => {
+    if (!deferredInstallPrompt) return
+    await deferredInstallPrompt.prompt()
+    const { outcome } = await deferredInstallPrompt.userChoice
+    if (outcome === 'accepted') {
+      showInstallBanner.value = false
+      deferredInstallPrompt = null
+    }
+  }
+
+  const dismissInstallBanner = () => {
+    showInstallBanner.value = false
+  }
+
+  onMounted(() => {
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    // Hide banner if the app is already installed (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      showInstallBanner.value = false
+    }
+  })
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  })
+
   // watch for initial load — use { flush: 'post' } so the child's onMounted
   // (which sets up gameWorld) has run before we try to apply colours
   watch(
@@ -164,11 +201,68 @@
         :current-team-name="currentTeamName"
         :hand-detected="handDetected"
       />
+
+      <!-- [Feature] PWA Install Banner -->
+      <div v-if="showInstallBanner" class="install-banner">
+        <span class="install-banner-text">Add <strong>Gesto Fly</strong> to your home screen for fullscreen play!</span>
+        <div class="install-banner-actions">
+          <button class="install-btn install-btn-primary" @click="installApp">Install</button>
+          <button class="install-btn install-btn-dismiss" @click="dismissInstallBanner">✕</button>
+        </div>
+      </div>
     </v-main>
   </v-app>
 </template>
 
 <style scoped>
+  .install-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: rgba(20, 20, 40, 0.95);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(231, 76, 60, 0.5);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: white;
+    font-size: 0.9rem;
+  }
+
+  .install-banner-text {
+    flex: 1;
+  }
+
+  .install-banner-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .install-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .install-btn-primary {
+    background: #e74c3c;
+    color: white;
+  }
+
+  .install-btn-dismiss {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    padding: 8px 10px;
+  }
+
   .camera-layer {
     position: absolute;
     top: 0;
