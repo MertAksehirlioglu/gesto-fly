@@ -1,12 +1,10 @@
 <script setup lang="ts">
   import { onMounted, onBeforeUnmount, ref } from 'vue'
-  import {
-    FilesetResolver,
-    HandLandmarker,
-    DrawingUtils,
-  } from '@mediapipe/tasks-vision'
+  import { HandLandmarker, DrawingUtils } from '@mediapipe/tasks-vision'
   import { EMA } from '../lib/ema'
   import { verifyAssetIntegrity } from '../composables/verifyAssetIntegrity'
+  import MediaPipeWorker from '../workers/mediapipeWorker.ts?worker'
+  import type { SerializedLandmark } from '../workers/mediapipeWorker'
 
   const cursorX = new EMA(0.3)
   const cursorY = new EMA(0.3)
@@ -21,7 +19,12 @@
   // [Code Quality] Camera Permission Error Handling
   const cameraError = ref<string | null>(null)
 
-  let handLandmarker: HandLandmarker | null = null
+  // [Performance] Web Worker for off-main-thread inference
+  let inferenceWorker: Worker | null = null
+  let workerBusy = false
+  let workerReady = false
+  let latestLandmarks: SerializedLandmark[][] = []
+
   let animationFrameId: number | null = null
   let drawingUtils: DrawingUtils | null = null
 
@@ -29,57 +32,56 @@
   let activeStream: MediaStream | null = null
 
   // Pinned MediaPipe WASM package version (matches installed npm package).
-  // SRI hashes for version 0.10.22-rc.20250304 (cdn.jsdelivr.net):
-  //   vision_wasm_internal.js:        sha384-MMmkTwRjsrcocMM4i/voctUk/2bgv860D1e8/H8lZlWQwII8hBPhO8nZRfVDWErY
-  //   vision_wasm_internal.wasm:      sha384-5CHiizcG3SmHE9yb31ynp58+HxhuoCVp7RUsTP9sjbx28ItTh3QvnzETYPbiCp5U
-  //   vision_wasm_nosimd_internal.js:   sha384-g90rCTza6aOztJiHE5UTse0pbLcL9wWpcX94gyP0IEM2DfePVB1CJI55pN46T7m3
-  //   vision_wasm_nosimd_internal.wasm: sha384-1qQeFc/D4XWQsFU6rmN97e+8OfC4Axy5XXbwrsNciQEZ19mIKFn2Q5vqElEnE/BC
   const MEDIAPIPE_WASM_URL =
     'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm'
 
   // Model asset URL and its SRI hash (sha384, base64-encoded).
-  // Recompute with: openssl dgst -sha384 -binary hand_landmarker.task | base64 -w0
-  // SRI hash: sha384-uWvruVKd887ov8k43S+DBHCsi7UXXS+CKvvdM1PX00rjPzx/B0QrAPfJ1U9yKcze
   const MODEL_URL =
     'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
   const MODEL_SHA384 =
     'sha384-uWvruVKd887ov8k43S+DBHCsi7UXXS+CKvvdM1PX00rjPzx/B0QrAPfJ1U9yKcze'
 
-  const initHandLandmarker = async () => {
-    const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL)
+  const initHandLandmarker = (): Promise<void> => {
+    return new Promise(async (resolve, reject) => {
+      // Verify model integrity on the main thread, then transfer buffer to worker
+      const modelBuffer = await verifyAssetIntegrity(MODEL_URL, MODEL_SHA384)
 
-    // Fetch and verify the model file integrity before passing it to MediaPipe.
-    // verifyAssetIntegrity computes SHA-384 via Web Crypto API and throws if the
-    // digest does not match MODEL_SHA384, catching CDN tampering or version drift.
-    const modelBuffer = await verifyAssetIntegrity(MODEL_URL, MODEL_SHA384)
-    const modelAssetBuffer = new Uint8Array(modelBuffer)
+      inferenceWorker = new MediaPipeWorker()
 
-    // [Performance] GPU Delegate Fallback for HandLandmarker
-    try {
-      handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetBuffer,
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numHands: 1,
-      })
-    } catch {
-      console.warn('MediaPipe: GPU delegate failed, falling back to CPU')
-      handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetBuffer,
-          delegate: 'CPU',
-        },
-        runningMode: 'VIDEO',
-        numHands: 1,
-      })
-    }
+      inferenceWorker.onmessage = (e: MessageEvent) => {
+        const { type, ...data } = e.data as {
+          type: string
+          message?: string
+          landmarks?: SerializedLandmark[][]
+        }
+
+        if (type === 'READY') {
+          workerReady = true
+          resolve()
+        } else if (type === 'ERROR') {
+          reject(new Error(data.message))
+        } else if (type === 'RESULTS') {
+          latestLandmarks = data.landmarks ?? []
+          workerBusy = false
+          processGestureResults()
+        }
+      }
+
+      inferenceWorker.onerror = (err) => {
+        reject(err)
+      }
+
+      // Transfer the ArrayBuffer to the worker (zero-copy)
+      inferenceWorker.postMessage(
+        { type: 'INIT', wasmUrl: MEDIAPIPE_WASM_URL, modelBuffer },
+        [modelBuffer],
+      )
+    })
   }
 
   const startCamera = async () => {
-    if (!handLandmarker || !videoRef.value) {
-      console.log('Wait! handLandmarker not loaded yet.')
+    if (!workerReady || !videoRef.value) {
+      console.log('Wait! inference worker not ready yet.')
       return
     }
 
@@ -131,6 +133,9 @@
     if (videoRef.value) {
       videoRef.value.srcObject = null
     }
+    // Reset state so stale landmarks are not redrawn after resuming
+    latestLandmarks = []
+    workerBusy = false
   }
 
   // [Security] Camera Stream Cleanup on Tab Visibility Change
@@ -147,7 +152,6 @@
     pinchThreshold?: number
   }>()
 
-  // Define specific emit events with types if possible, but for Vue setup we use defineEmits
   const emit = defineEmits<{
     (
       e: 'gesture',
@@ -169,30 +173,15 @@
   const INFERENCE_INTERVAL_MS = 1000 / 30
   let lastInferenceTime = 0
 
-  const predictWebcam = () => {
-    if (!handLandmarker || !videoRef.value || !isCameraActive.value) return
-
-    // Verify video is ready
-    if (videoRef.value.readyState < 2) return
-
-    const startTimeMs = performance.now()
-
-    // Skip frame if not enough time has elapsed (30fps cap)
-    if (startTimeMs - lastInferenceTime < INFERENCE_INTERVAL_MS) {
-      animationFrameId = requestAnimationFrame(predictWebcam)
-      return
-    }
-    lastInferenceTime = startTimeMs
-    const results = handLandmarker.detectForVideo(videoRef.value, startTimeMs)
-
-    // Clear canvas every frame
-    const canvas = canvasRef.value
-    const ctx = canvas ? canvas.getContext('2d') : null
-    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    if (results.landmarks && results.landmarks.length > 0) {
+  /**
+   * Process the latest landmarks received from the inference worker.
+   * This runs on the main thread but does NOT block the physics/render tick
+   * because inference itself is happening in the worker.
+   */
+  const processGestureResults = () => {
+    if (latestLandmarks.length > 0) {
       emit('handDetected', true)
-      const landmarks = results.landmarks[0]
+      const landmarks = latestLandmarks[0]
 
       // Draw hand skeleton with confidence-based coloring.
       // Each joint is graded by its visibility score:
@@ -241,47 +230,29 @@
         indexTip.x - thumbTip.x,
         indexTip.y - thumbTip.y,
       )
-      pinchDist.update(rawDistance) // keep EMA in sync; smoothed value unused (raw used for state machine)
+      pinchDist.update(rawDistance)
 
-      // Dynamic pinch threshold — from calibration or fallback default
       const pinchThreshold = props.pinchThreshold ?? 0.03
-      // Hysteresis: require 10% more gap to release than to grab.
-      // Just enough to prevent a single noisy frame from re-grabbing mid-throw.
       const releaseThreshold = pinchThreshold * 1.1
 
-      // Emit raw distance for calibration sampling (accurate max/min),
-      // smoothed distance is only used internally for the pinch state machine.
       emit('pinchDistance', rawDistance)
 
       const centerX = (indexTip.x + thumbTip.x) / 2
       const centerY = (indexTip.y + thumbTip.y) / 2
 
-      // Map to visual coordinates (Mirrored) — smoothed
       const visualX = pinchX.update(1 - centerX)
       const visualY = pinchY.update(centerY)
 
-      // Cursor: follow pinch center while grabbing (stable, avoids landmark
-      // confusion between thumb/index tip in awkward orientations), otherwise
-      // follow index tip for hover/UI interactions.
       const rawCursorX = isPinching ? 1 - centerX : 1 - indexTip.x
       const rawCursorY = isPinching ? centerY : indexTip.y
       const cursorVisualX = cursorX.update(rawCursorX)
       const cursorVisualY = cursorY.update(rawCursorY)
 
-      // Always emit cursor position for UI interaction (Hover)
-      emit('gesture', {
-        type: 'cursorMove',
-        x: cursorVisualX,
-        y: cursorVisualY,
-      })
+      emit('gesture', { type: 'cursorMove', x: cursorVisualX, y: cursorVisualY })
 
-      // ── Pinch state machine — runs on RAW distance (not smoothed) ──────────
-      // Using rawDistance here so release is detected the moment fingers open,
-      // without waiting for the EMA to catch up.
+      // Pinch state machine — runs on RAW distance
       if (rawDistance < pinchThreshold) {
-        // Pinching — cancel any pending release
         releaseFrameCount = 0
-
         if (!isPinching) {
           isPinching = true
           emit('pinchStateChange', true)
@@ -290,10 +261,8 @@
           emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
         }
       } else {
-        // Past the grab threshold — check hysteresis band before releasing
         if (isPinching) {
           if (rawDistance > releaseThreshold) {
-            // Clearly open — release immediately (1 frame confirmation)
             releaseFrameCount++
             if (releaseFrameCount >= 1) {
               isPinching = false
@@ -304,7 +273,6 @@
               emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
             }
           } else {
-            // In the hysteresis dead band — stay pinched, reset counter
             releaseFrameCount = 0
             emit('gesture', { type: 'pinchMove', x: visualX, y: visualY })
           }
@@ -312,7 +280,7 @@
       }
     } else {
       emit('handDetected', false)
-      // Hand lost — reset smoothers so stale values don't bleed into next detection
+      // Hand lost — reset smoothers
       cursorX.reset()
       cursorY.reset()
       pinchX.reset()
@@ -325,16 +293,79 @@
         emit('pinchStateChange', false)
         emit('gesture', { type: 'pinchEnd', x: 0, y: 0 })
       }
+    }
+  }
 
-      // Canvas already cleared at top of frame
+  const predictWebcam = () => {
+    if (!inferenceWorker || !videoRef.value || !isCameraActive.value) return
+
+    // Verify video is ready
+    if (videoRef.value.readyState < 2) {
+      animationFrameId = requestAnimationFrame(predictWebcam)
+      return
+    }
+
+    const startTimeMs = performance.now()
+
+    // Clear canvas every frame
+    const canvas = canvasRef.value
+    const ctx = canvas ? canvas.getContext('2d') : null
+    if (canvas && ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // Redraw the latest landmarks at RAF rate (smooth, no flicker)
+      if (latestLandmarks.length > 0 && drawingUtils) {
+        const landmarks = latestLandmarks[0]
+        drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
+          color: 'rgba(255, 255, 255, 0.6)',
+          lineWidth: 2,
+        })
+        drawingUtils.drawLandmarks(landmarks, {
+          color: (data) =>
+            data.index === 4 || data.index === 8 ? '#ff4444' : 'rgba(255,255,255,0.9)',
+          fillColor: (data) =>
+            data.index === 4 || data.index === 8
+              ? 'rgba(255,80,80,0.5)'
+              : 'rgba(255,255,255,0.3)',
+          lineWidth: 1,
+          radius: (data) => (data.index === 4 || data.index === 8 ? 7 : 4),
+        })
+      }
+    }
+
+    // Submit a new inference frame to the worker if not busy and throttle elapsed
+    if (
+      !workerBusy &&
+      workerReady &&
+      startTimeMs - lastInferenceTime >= INFERENCE_INTERVAL_MS
+    ) {
+      lastInferenceTime = startTimeMs
+      workerBusy = true
+
+      // createImageBitmap is fast (~1ms) — fire-and-forget, do not await in RAF
+      createImageBitmap(videoRef.value).then(
+        (bitmap) => {
+          if (inferenceWorker && isCameraActive.value) {
+            // Transfer bitmap (zero-copy) to worker for inference
+            inferenceWorker.postMessage(
+              { type: 'DETECT', bitmap, timestamp: startTimeMs },
+              [bitmap],
+            )
+          } else {
+            bitmap.close()
+            workerBusy = false
+          }
+        },
+        () => {
+          workerBusy = false
+        },
+      )
     }
 
     if (isCameraActive.value) {
       animationFrameId = requestAnimationFrame(predictWebcam)
     }
   }
-
-  // function drawLandmarks removed
 
   onMounted(async () => {
     await initHandLandmarker()
@@ -346,6 +377,13 @@
 
   onBeforeUnmount(() => {
     stopCamera()
+
+    // Terminate the inference worker
+    if (inferenceWorker) {
+      inferenceWorker.postMessage({ type: 'TERMINATE' })
+      inferenceWorker.terminate()
+      inferenceWorker = null
+    }
 
     // [Security] Remove visibility change listener
     document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -361,7 +399,6 @@
       playsinline
       muted
     ></video>
-    <!-- Canvas for landmarks removed/hidden? No, keep it for potential future use or just leave logic empty -->
     <canvas ref="canvasRef" class="output_canvas"></canvas>
 
     <!-- [Code Quality] Camera Permission Error Overlay -->
