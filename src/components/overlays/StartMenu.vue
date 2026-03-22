@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref, watch } from 'vue'
   import { useGestureDwell } from '../../composables/useGestureDwell'
+  import { useFullscreen } from '../../composables/useFullscreen'
 
   const props = defineProps<{
     cursorPos: { x: number; y: number }
@@ -14,11 +15,14 @@
     (e: 'recalibrate'): void
   }>()
 
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen()
+
   // Refs
   const btnCompetitive = ref<HTMLElement | null>(null)
   const btnPractice = ref<HTMLElement | null>(null)
   const btnLeaderboard = ref<HTMLElement | null>(null)
   const btnRecalibrate = ref<HTMLElement | null>(null)
+  const btnFullscreen = ref<HTMLElement | null>(null)
 
   const competitiveDwell = useGestureDwell({
     onComplete: () => emit('start-competitive'),
@@ -32,6 +36,7 @@
   const recalibrateDwell = useGestureDwell({
     onComplete: () => emit('recalibrate'),
   })
+  const fullscreenDwell = useGestureDwell({ onComplete: toggleFullscreen })
 
   watch(
     () => props.cursorPos,
@@ -46,6 +51,7 @@
       { el: btnPractice.value, dwell: practiceDwell },
       { el: btnLeaderboard.value, dwell: leaderboardDwell },
       { el: btnRecalibrate.value, dwell: recalibrateDwell },
+      { el: btnFullscreen.value, dwell: fullscreenDwell },
     ]
 
     for (const btn of buttons) {
@@ -128,6 +134,21 @@
             v-if="recalibrateDwell.isActive.value"
             class="btn-progress"
             :style="{ width: recalibrateDwell.progress.value + '%' }"
+          ></div>
+        </button>
+
+        <!-- Fullscreen Button -->
+        <button
+          ref="btnFullscreen"
+          class="menu-btn tertiary fullscreen"
+          :class="{ hovering: fullscreenDwell.isActive.value }"
+          @click="toggleFullscreen"
+        >
+          {{ isFullscreen ? 'EXIT FULLSCREEN ⛶' : 'FULLSCREEN ⛶' }}
+          <div
+            v-if="fullscreenDwell.isActive.value"
+            class="btn-progress"
+            :style="{ width: fullscreenDwell.progress.value + '%' }"
           ></div>
         </button>
       </div>
@@ -254,6 +275,18 @@
   .menu-btn.recalibrate.hovering {
     border-color: orange;
     color: orange;
+  }
+
+  .menu-btn.fullscreen {
+    border-color: rgba(100, 180, 255, 0.5);
+    color: rgba(130, 200, 255, 0.9);
+    font-size: 0.85rem;
+  }
+
+  .menu-btn.fullscreen:hover,
+  .menu-btn.fullscreen.hovering {
+    border-color: rgba(130, 200, 255, 0.9);
+    color: rgb(130, 200, 255);
   }
 
   .mini-leaderboard {
