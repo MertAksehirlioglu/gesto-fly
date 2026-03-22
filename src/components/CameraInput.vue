@@ -41,11 +41,11 @@
   const MODEL_SHA384 =
     'sha384-uWvruVKd887ov8k43S+DBHCsi7UXXS+CKvvdM1PX00rjPzx/B0QrAPfJ1U9yKcze'
 
-  const initHandLandmarker = (): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-      // Verify model integrity on the main thread, then transfer buffer to worker
-      const modelBuffer = await verifyAssetIntegrity(MODEL_URL, MODEL_SHA384)
+  const initHandLandmarker = async (): Promise<void> => {
+    // Verify model integrity on the main thread, then transfer buffer to worker
+    const modelBuffer = await verifyAssetIntegrity(MODEL_URL, MODEL_SHA384)
 
+    return new Promise((resolve, reject) => {
       inferenceWorker = new MediaPipeWorker()
 
       inferenceWorker.onmessage = (e: MessageEvent) => {
@@ -248,7 +248,11 @@
       const cursorVisualX = cursorX.update(rawCursorX)
       const cursorVisualY = cursorY.update(rawCursorY)
 
-      emit('gesture', { type: 'cursorMove', x: cursorVisualX, y: cursorVisualY })
+      emit('gesture', {
+        type: 'cursorMove',
+        x: cursorVisualX,
+        y: cursorVisualY,
+      })
 
       // Pinch state machine — runs on RAW distance
       if (rawDistance < pinchThreshold) {
@@ -315,14 +319,23 @@
 
       // Redraw the latest landmarks at RAF rate (smooth, no flicker)
       if (latestLandmarks.length > 0 && drawingUtils) {
-        const landmarks = latestLandmarks[0]
-        drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
-          color: 'rgba(255, 255, 255, 0.6)',
-          lineWidth: 2,
-        })
+        // Cast to NormalizedLandmark[]: visibility is optional in our serialized type but
+        // always present for DrawingUtils (MediaPipe sets it to 0 when absent).
+        const landmarks =
+          latestLandmarks[0] as unknown as import('@mediapipe/tasks-vision').NormalizedLandmark[]
+        drawingUtils.drawConnectors(
+          landmarks,
+          HandLandmarker.HAND_CONNECTIONS,
+          {
+            color: 'rgba(255, 255, 255, 0.6)',
+            lineWidth: 2,
+          },
+        )
         drawingUtils.drawLandmarks(landmarks, {
           color: (data) =>
-            data.index === 4 || data.index === 8 ? '#ff4444' : 'rgba(255,255,255,0.9)',
+            data.index === 4 || data.index === 8
+              ? '#ff4444'
+              : 'rgba(255,255,255,0.9)',
           fillColor: (data) =>
             data.index === 4 || data.index === 8
               ? 'rgba(255,80,80,0.5)'
