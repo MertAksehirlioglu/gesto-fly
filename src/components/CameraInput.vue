@@ -194,25 +194,39 @@
       emit('handDetected', true)
       const landmarks = results.landmarks[0]
 
-      // Draw hand skeleton
+      // Draw hand skeleton with confidence-based coloring.
+      // Each joint is graded by its visibility score:
+      //   ≥ 0.8 → green  (reliable)
+      //   ≥ 0.5 → yellow (borderline)
+      //   < 0.5 → red    (unreliable — player should reposition)
       if (drawingUtils) {
+        const confidenceColor = (v: number | undefined): string => {
+          const vis = v ?? 0
+          if (vis >= 0.8) return 'rgba(0, 220, 80, 0.7)'
+          if (vis >= 0.5) return 'rgba(255, 220, 0, 0.7)'
+          return 'rgba(255, 60, 60, 0.7)'
+        }
+        const confidenceFill = (v: number | undefined): string => {
+          const vis = v ?? 0
+          if (vis >= 0.8) return 'rgba(0, 220, 80, 0.35)'
+          if (vis >= 0.5) return 'rgba(255, 220, 0, 0.35)'
+          return 'rgba(255, 60, 60, 0.35)'
+        }
+
         drawingUtils.drawConnectors(
           landmarks,
           HandLandmarker.HAND_CONNECTIONS,
           {
-            color: 'rgba(255, 255, 255, 0.6)',
+            color: (data) => {
+              const avg = ((data.from?.visibility ?? 0) + (data.to?.visibility ?? 0)) / 2
+              return confidenceColor(avg)
+            },
             lineWidth: 2,
           },
         )
         drawingUtils.drawLandmarks(landmarks, {
-          color: (data) =>
-            data.index === 4 || data.index === 8
-              ? '#ff4444'
-              : 'rgba(255,255,255,0.9)',
-          fillColor: (data) =>
-            data.index === 4 || data.index === 8
-              ? 'rgba(255,80,80,0.5)'
-              : 'rgba(255,255,255,0.3)',
+          color: (data) => confidenceColor(data.from?.visibility),
+          fillColor: (data) => confidenceFill(data.from?.visibility),
           lineWidth: 1,
           radius: (data) => (data.index === 4 || data.index === 8 ? 7 : 4),
         })
