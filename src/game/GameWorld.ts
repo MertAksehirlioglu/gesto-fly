@@ -377,6 +377,18 @@ export class GameWorld {
     }
   }
 
+  /** Pause physics + render loops (e.g. when the tab is hidden). */
+  pausePhysics() {
+    Matter.Runner.stop(this.runner)
+    Matter.Render.stop(this.render)
+  }
+
+  /** Resume physics + render loops (e.g. when the tab becomes visible again). */
+  resumePhysics() {
+    Matter.Render.run(this.render)
+    Matter.Runner.run(this.runner, this.engine)
+  }
+
   addBody(
     body: Matter.Body | Matter.Body[] | Matter.Composite | Matter.Constraint,
   ) {

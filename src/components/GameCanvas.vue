@@ -262,6 +262,16 @@
     }
   }
 
+  // [Security] Pause physics runner when the tab is hidden to prevent background CPU drain
+  const handleVisibilityChange = () => {
+    if (!gameWorld) return
+    if (document.hidden) {
+      gameWorld.pausePhysics()
+    } else {
+      gameWorld.resumePhysics()
+    }
+  }
+
   onMounted(() => {
     loadLeaderboard()
     nextTick(() => {
@@ -297,6 +307,8 @@
       })
       resizeObserver.observe(containerRef.value)
     }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
   })
 
   onUnmounted(() => {
@@ -307,6 +319,7 @@
     if (resizeObserver) {
       resizeObserver.disconnect()
     }
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
     closeAudio()
   })
 
