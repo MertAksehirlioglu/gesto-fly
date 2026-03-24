@@ -345,6 +345,49 @@
     playSwish()
   }
 
+  // --- Touch fallback (tablets / touchscreen laptops without webcam) ---
+  const getTouchCoords = (e: TouchEvent, useChanged = false) => {
+    const touch = useChanged
+      ? e.changedTouches[0]
+      : (e.touches[0] ?? e.changedTouches[0])
+    if (!touch) return null
+    const canvas = canvasRef.value
+    if (!canvas) return { x: touch.clientX, y: touch.clientY }
+    const rect = canvas.getBoundingClientRect()
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
+  }
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (gameState.value !== 'PLAYING') return
+    e.preventDefault()
+    const coords = getTouchCoords(e)
+    if (!coords) return
+    isCursorPinching.value = true
+    cursorP.value = coords
+    gameWorld?.startGrab(coords.x, coords.y)
+  }
+
+  const handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault()
+    const coords = getTouchCoords(e)
+    if (!coords) return
+    cursorP.value = coords
+    if (gameState.value === 'PLAYING') {
+      gameWorld?.moveGrab(coords.x, coords.y)
+    }
+  }
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    e.preventDefault()
+    isCursorPinching.value = false
+    const coords = getTouchCoords(e, true)
+    if (coords) cursorP.value = coords
+    if (gameState.value === 'PLAYING') {
+      gameWorld?.endGrab()
+      playSwish()
+    }
+  }
+
   const handlePinchStateChange = (pinching: boolean) => {
     isCursorPinching.value = pinching
   }
@@ -367,6 +410,10 @@
     @mousemove="handleMouseMove"
     @mouseup="handleMouseUp"
     @mouseleave="handleMouseUp"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+    @touchcancel="handleTouchEnd"
   >
     <canvas ref="canvasRef" class="game-canvas"></canvas>
 
