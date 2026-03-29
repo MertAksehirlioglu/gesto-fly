@@ -5,5 +5,5 @@
     "**/*.d.ts",
     "src/components/CameraInput.vue",
     "src/components/TeamSelector.vue"
-  ],
+  ]
 }
