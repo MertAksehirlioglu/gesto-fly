@@ -15,7 +15,8 @@
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "mcp:playwright": "npx @playwright/mcp",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "prepare": "husky"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -46,6 +47,12 @@
     "typescript-eslint": "^8.50.1",
     "vite": "^7.2.4",
     "vitest": "^4.0.16",
-    "vue-tsc": "^3.2.1"
+    "vue-tsc": "^3.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0"
+  },
+  "lint-staged": {
+    "*.{ts,vue,js}": "eslint --fix",
+    "*.{ts,vue,js,json,css,md}": "prettier --write"
   }
 }

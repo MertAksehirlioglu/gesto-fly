@@ -2,6 +2,7 @@
   import { ref, watch } from 'vue'
   import { useGestureDwell } from '../../composables/useGestureDwell'
   import { useGameAudio } from '../../composables/useGameAudio'
+  import { useFullscreen } from '../../composables/useFullscreen'
 
   const props = defineProps<{
     cursorPos: { x: number; y: number }
@@ -18,11 +19,14 @@
 
   const btnExit = ref<HTMLElement | null>(null)
   const btnMute = ref<HTMLElement | null>(null)
+  const btnFullscreen = ref<HTMLElement | null>(null)
 
   const { muted, toggleMute } = useGameAudio()
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen()
 
   const exitDwell = useGestureDwell({ onComplete: () => emit('exit') })
   const muteDwell = useGestureDwell({ onComplete: toggleMute })
+  const fullscreenDwell = useGestureDwell({ onComplete: toggleFullscreen })
 
   watch(
     () => props.cursorPos,
@@ -35,6 +39,7 @@
     const buttons = [
       { el: btnExit.value, dwell: exitDwell },
       { el: btnMute.value, dwell: muteDwell },
+      { el: btnFullscreen.value, dwell: fullscreenDwell },
     ]
     for (const btn of buttons) {
       if (btn.el) {
@@ -96,6 +101,21 @@
         v-if="muteDwell.isActive.value"
         class="btn-progress"
         :style="{ width: muteDwell.progress.value + '%' }"
+      ></div>
+    </button>
+
+    <button
+      ref="btnFullscreen"
+      class="fullscreen-btn"
+      :class="{ hovering: fullscreenDwell.isActive.value }"
+      :title="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
+      @click="toggleFullscreen"
+    >
+      {{ isFullscreen ? '⛶' : '⛶' }}
+      <div
+        v-if="fullscreenDwell.isActive.value"
+        class="btn-progress"
+        :style="{ width: fullscreenDwell.progress.value + '%' }"
       ></div>
     </button>
   </div>
@@ -207,6 +227,25 @@
     transition: transform 0.15s;
   }
   .mute-btn.hovering {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+
+  .fullscreen-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    line-height: normal;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s;
+  }
+  .fullscreen-btn.hovering {
     transform: scale(1.1);
     border-color: rgba(255, 255, 255, 0.8);
   }
