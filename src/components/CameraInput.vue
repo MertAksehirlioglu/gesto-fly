@@ -202,13 +202,15 @@
           return 'rgba(255, 60, 60, 0.35)'
         }
 
-        const normalizedLandmarks = landmarks as unknown as import('@mediapipe/tasks-vision').NormalizedLandmark[]
+        const normalizedLandmarks =
+          landmarks as unknown as import('@mediapipe/tasks-vision').NormalizedLandmark[]
         drawingUtils.drawConnectors(
           normalizedLandmarks,
           HandLandmarker.HAND_CONNECTIONS,
           {
             color: (data) => {
-              const avg = ((data.from?.visibility ?? 0) + (data.to?.visibility ?? 0)) / 2
+              const avg =
+                ((data.from?.visibility ?? 0) + (data.to?.visibility ?? 0)) / 2
               return confidenceColor(avg)
             },
             lineWidth: 2,

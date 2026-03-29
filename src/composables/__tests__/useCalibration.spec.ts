@@ -69,7 +69,11 @@ describe('useCalibration', () => {
 
   it('loadFromStorage() restores calibration on module import', async () => {
     // Pre-populate storage before importing the module
-    store[STORAGE_KEY] = JSON.stringify({ min: 0.05, max: 0.2, throwMultiplier: 0.4 })
+    store[STORAGE_KEY] = JSON.stringify({
+      min: 0.05,
+      max: 0.2,
+      throwMultiplier: 0.4,
+    })
 
     const { useCalibration } = await import('../useCalibration')
     const { isCalibrated, pinchThreshold, throwMultiplier } = useCalibration()

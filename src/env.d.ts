@@ -3,7 +3,10 @@
 // [Feature] PWA Install Prompt — browser-native type not yet in lib.dom.d.ts for all TS versions
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
-  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed'
+    platform: string
+  }>
   prompt(): Promise<void>
 }
 

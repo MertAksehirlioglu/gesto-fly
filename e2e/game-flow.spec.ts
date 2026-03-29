@@ -18,7 +18,11 @@ import { test, expect } from '@playwright/test'
 // ---------------------------------------------------------------------------
 
 const CALIBRATION_KEY = 'gesto-fly-calibration'
-const CALIBRATION_DATA = JSON.stringify({ min: 0.01, max: 0.12, throwMultiplier: 0.3 })
+const CALIBRATION_DATA = JSON.stringify({
+  min: 0.01,
+  max: 0.12,
+  throwMultiplier: 0.3,
+})
 
 /** Abort all MediaPipe asset requests so the worker never initialises. */
 async function abortMediaPipeRoutes(page: import('@playwright/test').Page) {
@@ -69,7 +73,9 @@ test.describe('Game Flow', () => {
   })
 
   // ── 2. PLAYING state transition ───────────────────────────────────────────
-  test('transitions to PLAYING state after clicking COMPETITIVE', async ({ page }) => {
+  test('transitions to PLAYING state after clicking COMPETITIVE', async ({
+    page,
+  }) => {
     await page.goto('/')
 
     await page.locator('button.menu-btn.primary').click()
@@ -80,7 +86,9 @@ test.describe('Game Flow', () => {
   })
 
   // ── 3. GameOverOverlay with correct score ─────────────────────────────────
-  test('shows GameOverOverlay with the correct score after game ends', async ({ page }) => {
+  test('shows GameOverOverlay with the correct score after game ends', async ({
+    page,
+  }) => {
     // Install fake clock BEFORE navigation so the competitive setInterval
     // created inside startGame() is controlled by the test.
     await page.clock.install({ time: Date.now() })
@@ -96,12 +104,19 @@ test.describe('Game Flow', () => {
     // GameCanvas exposes getGameWorld() which returns the GameWorld whose
     // emitter fires the 'score' event that onScore() listens to.
     const scored = await page.evaluate(() => {
-      const gameContainer = document.querySelector('.game-container') as Element & {
+      const gameContainer = document.querySelector(
+        '.game-container',
+      ) as Element & {
         __vueParentComponent?: {
-          exposed?: { getGameWorld?: () => { emitter?: { emit: (e: string) => void } } | null }
+          exposed?: {
+            getGameWorld?: () => {
+              emitter?: { emit: (e: string) => void }
+            } | null
+          }
         }
       }
-      const gameWorld = gameContainer?.__vueParentComponent?.exposed?.getGameWorld?.()
+      const gameWorld =
+        gameContainer?.__vueParentComponent?.exposed?.getGameWorld?.()
       if (!gameWorld?.emitter) return false
       gameWorld.emitter.emit('score')
       gameWorld.emitter.emit('score')
@@ -120,7 +135,9 @@ test.describe('Game Flow', () => {
     await page.clock.runFor(35_000)
 
     // GameOverOverlay must be visible
-    await expect(page.locator('.game-over-card')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('.game-over-card')).toBeVisible({
+      timeout: 5_000,
+    })
 
     // The highlighted score element should display 3
     await expect(page.locator('.highlight')).toHaveText('3')

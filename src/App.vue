@@ -1,5 +1,12 @@
 <script setup lang="ts">
-  import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+  import {
+    ref,
+    computed,
+    watch,
+    nextTick,
+    onMounted,
+    onBeforeUnmount,
+  } from 'vue'
   import GameCanvas from './components/GameCanvas.vue'
   import CameraInput from './components/CameraInput.vue'
   import TeamSelector from './components/TeamSelector.vue'
@@ -204,10 +211,20 @@
 
       <!-- [Feature] PWA Install Banner -->
       <div v-if="showInstallBanner" class="install-banner">
-        <span class="install-banner-text">Add <strong>Gesto Fly</strong> to your home screen for fullscreen play!</span>
+        <span class="install-banner-text"
+          >Add <strong>Gesto Fly</strong> to your home screen for fullscreen
+          play!</span
+        >
         <div class="install-banner-actions">
-          <button class="install-btn install-btn-primary" @click="installApp">Install</button>
-          <button class="install-btn install-btn-dismiss" @click="dismissInstallBanner">✕</button>
+          <button class="install-btn install-btn-primary" @click="installApp">
+            Install
+          </button>
+          <button
+            class="install-btn install-btn-dismiss"
+            @click="dismissInstallBanner"
+          >
+            ✕
+          </button>
         </div>
       </div>
     </v-main>
