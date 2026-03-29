@@ -285,17 +285,28 @@
     })
 
     if (containerRef.value) {
+      // Batch all DOM reads (contentRect) and canvas writes into a single
+      // animation frame so rapid window resizes don't cause layout thrashing.
+      let pendingEntries: ResizeObserverEntry[] = []
+      let rafScheduled = false
+
       resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { width, height } = entry.contentRect
-          if (canvasRef.value) {
-            canvasRef.value.width = width
-            canvasRef.value.height = height
+        pendingEntries = entries // keep only the latest batch
+        if (rafScheduled) return
+        rafScheduled = true
+        requestAnimationFrame(() => {
+          rafScheduled = false
+          for (const entry of pendingEntries) {
+            const { width, height } = entry.contentRect
+            if (canvasRef.value) {
+              canvasRef.value.width = width
+              canvasRef.value.height = height
+            }
+            if (gameWorld) {
+              gameWorld.resize(width, height)
+            }
           }
-          if (gameWorld) {
-            gameWorld.resize(width, height)
-          }
-        }
+        })
       })
       resizeObserver.observe(containerRef.value)
     }
