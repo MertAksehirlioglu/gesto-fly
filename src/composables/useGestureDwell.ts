@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-export interface DwellOptions {
+interface DwellOptions {
   /** Duration in ms before the dwell completes. Default: 1500ms */
   duration?: number
   /** Called when the dwell timer completes */

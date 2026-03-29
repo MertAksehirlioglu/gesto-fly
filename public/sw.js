@@ -54,17 +54,12 @@ self.addEventListener('fetch', (event) => {
       const cached = await cache.match(event.request)
       if (cached) return cached
 
-      try {
-        const response = await fetch(event.request)
-        if (response.ok) {
-          // Clone because the body can only be consumed once
-          cache.put(event.request, response.clone())
-        }
-        return response
-      } catch (err) {
-        // Network failure and nothing in cache — propagate the error
-        throw err
+      const response = await fetch(event.request)
+      if (response.ok) {
+        // Clone because the body can only be consumed once
+        cache.put(event.request, response.clone())
       }
+      return response
     }),
   )
 })

@@ -66,7 +66,11 @@ export class Basketball {
   private readonly radius: number
   private readonly spriteBitmap: ImageBitmap | null
 
-  constructor(x: number, y: number, radius: number = PHYSICS_CONFIG.ball.radius) {
+  constructor(
+    x: number,
+    y: number,
+    radius: number = PHYSICS_CONFIG.ball.radius,
+  ) {
     this.radius = radius
     this.body = Matter.Bodies.circle(x, y, radius, {
       restitution: PHYSICS_CONFIG.ball.restitution,

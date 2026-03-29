@@ -159,7 +159,11 @@
       />
 
       <!-- Game Overlay (Physics) -->
-      <GameCanvas ref="gameCanvasRef" :current-team-name="currentTeamName" :hand-detected="handDetected" />
+      <GameCanvas
+        ref="gameCanvasRef"
+        :current-team-name="currentTeamName"
+        :hand-detected="handDetected"
+      />
     </v-main>
   </v-app>
 </template>
