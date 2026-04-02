@@ -4,6 +4,7 @@
   "ignore": [
     "**/*.d.ts",
     "src/components/CameraInput.vue",
-    "src/components/TeamSelector.vue"
+    "src/components/TeamSelector.vue",
+    "src/workers_bak/**"
   ]
 }
