@@ -34,7 +34,7 @@ self.addEventListener('message', async (e: MessageEvent) => {
     type: string
     wasmUrl?: string
     modelBuffer?: ArrayBuffer
-    bitmap?: ImageBitmap
+    bitmap?: ImageBitmap | VideoFrame
     timestamp?: number
   }
 

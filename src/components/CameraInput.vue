@@ -31,6 +31,11 @@
   // Keep a reference to the active stream for visibility-change cleanup
   let activeStream: MediaStream | null = null
 
+  // [Performance] MediaStreamTrackProcessor zero-copy pipeline (Chrome only; Safari falls back)
+  let trackProcessorReader: ReadableStreamDefaultReader<VideoFrame> | null =
+    null
+  let usingTrackProcessor = false
+
   // Pinned MediaPipe WASM package version (matches installed npm package).
   const MEDIAPIPE_WASM_URL =
     'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm'
@@ -108,6 +113,42 @@
             const ctx = canvasRef.value.getContext('2d')
             if (ctx) drawingUtils = new DrawingUtils(ctx)
           }
+
+          // [Performance] Use MediaStreamTrackProcessor when available (Chrome) for
+          // zero-copy VideoFrame delivery to the worker — no intermediate ImageBitmap.
+          // Safari falls back to the RAF + createImageBitmap approach below.
+          if (typeof MediaStreamTrackProcessor !== 'undefined') {
+            usingTrackProcessor = true
+            const track = stream.getVideoTracks()[0]
+            const processor = new MediaStreamTrackProcessor({ track })
+            trackProcessorReader = processor.readable.getReader()
+
+            const pumpFrames = async () => {
+              while (isCameraActive.value) {
+                const { done, value: frame } =
+                  await trackProcessorReader!.read()
+                if (done || !frame) break
+                const startTimeMs = performance.now()
+                if (
+                  !workerBusy &&
+                  workerReady &&
+                  inferenceWorker &&
+                  startTimeMs - lastInferenceTime >= INFERENCE_INTERVAL_MS
+                ) {
+                  lastInferenceTime = startTimeMs
+                  workerBusy = true
+                  inferenceWorker.postMessage(
+                    { type: 'DETECT', bitmap: frame, timestamp: startTimeMs },
+                    [frame],
+                  )
+                } else {
+                  frame.close()
+                }
+              }
+            }
+            pumpFrames()
+          }
+
           predictWebcam()
         })
         isCameraActive.value = true
@@ -126,6 +167,12 @@
       cancelAnimationFrame(animationFrameId)
       animationFrameId = null
     }
+    // Cancel the track processor reader if active
+    if (trackProcessorReader) {
+      trackProcessorReader.cancel().catch(() => {})
+      trackProcessorReader = null
+    }
+    usingTrackProcessor = false
     if (activeStream) {
       activeStream.getTracks().forEach((t) => t.stop())
       activeStream = null
@@ -349,8 +396,10 @@
       }
     }
 
-    // Submit a new inference frame to the worker if not busy and throttle elapsed
+    // Submit a new inference frame via createImageBitmap when the
+    // MediaStreamTrackProcessor pipeline is unavailable (Safari fallback).
     if (
+      !usingTrackProcessor &&
       !workerBusy &&
       workerReady &&
       startTimeMs - lastInferenceTime >= INFERENCE_INTERVAL_MS

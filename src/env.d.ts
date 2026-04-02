@@ -1,5 +1,21 @@
 /// <reference types="vite/client" />
 
+// [Performance] MediaStreamTrackProcessor — WICG proposal, not yet in lib.dom.d.ts
+interface MediaStreamTrackProcessorInit {
+  track: MediaStreamTrack
+  maxBufferSize?: number
+}
+declare class MediaStreamTrackProcessor {
+  readonly readable: ReadableStream<VideoFrame>
+  constructor(init: MediaStreamTrackProcessorInit)
+}
+
+// VideoFrame — part of WebCodecs API, not in lib.dom.d.ts for ES2022 target
+declare class VideoFrame {
+  readonly timestamp: number | null
+  close(): void
+}
+
 // [Feature] PWA Install Prompt — browser-native type not yet in lib.dom.d.ts for all TS versions
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
